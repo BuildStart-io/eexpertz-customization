@@ -1,0 +1,8 @@
+project_id = "buildstart-selfhosted"
+
+[functions.webhook-wsender]
+verify_jwt = false
+[functions.process-message]
+verify_jwt = false
+[functions.assetlinks]
+verify_jwt = false

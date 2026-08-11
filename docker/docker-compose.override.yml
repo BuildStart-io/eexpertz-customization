@@ -1,0 +1,22 @@
+# BuildStart.io customizations — layered on top of the official docker-compose.yml
+# Loaded automatically by docker compose.
+
+services:
+  studio:
+    # Expose Studio on host port 3000 (not exposed in base compose)
+    ports:
+      - "3000:3000"
+
+  functions:
+    environment:
+      # ── BuildStart.io edge function secrets ──────────────────────────────────
+      AI_GENERATE_URL: ${AI_GENERATE_URL}
+      BOT_API_KEY: ${BOT_API_KEY}
+      WAHA_BASE_URL: ${WAHA_BASE_URL}
+      WAHA_API_KEY: ${WAHA_API_KEY}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_REGION: ${MINIO_REGION}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+      WEBHOOK_URL_OVERRIDE: "https://regards-translate-adventures-pine.trycloudflare.com/functions/v1/webhook-wsender"
