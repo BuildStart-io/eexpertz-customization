@@ -3,9 +3,9 @@
 
 services:
   studio:
-    # Expose Studio on host port 3000 (not exposed in base compose)
+    # Expose Studio on host port 3030 by default (change using STUDIO_PORT env var)
     ports:
-      - "3000:3000"
+      - "${STUDIO_PORT:-3030}:3000"
 
   functions:
     environment:
