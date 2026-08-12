@@ -1,4 +1,4 @@
-name: Deploy BuildStart
+name: Deploy BuildStart Frontend
 
 on:
   push:
@@ -34,16 +34,6 @@ jobs:
           cd frontend
           npm run build
 
-      - name: Deploy Backend Files (Docker, DB, Supabase)
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          source: "docker/**,db/**,supabase/**"
-          target: "${{ secrets.DEPLOY_PATH || '/var/www/buildstart' }}"
-
       - name: Deploy Frontend to Nginx Web Root
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -55,7 +45,7 @@ jobs:
           target: "${{ secrets.FRONTEND_WEB_ROOT || '/var/www/app.buildstart.io' }}"
           strip_components: 2
 
-      - name: Run Server Setup and Start Services
+      - name: Fix Permissions and Reload Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -63,27 +53,10 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/var/www/buildstart' }}"
             FRONTEND_WEB_ROOT="${{ secrets.FRONTEND_WEB_ROOT || '/var/www/app.buildstart.io' }}"
             
-            # Fix permissions for Nginx web root if needed
+            # Ensure correct ownership
             sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} $FRONTEND_WEB_ROOT
             
-            # Write DOCKER_ENV if it exists
-            if [ -n "${{ secrets.DOCKER_ENV }}" ]; then
-              echo "${{ secrets.DOCKER_ENV }}" > $DEPLOY_PATH/docker/.env
-            fi
-            
-            # Delete broken/incorrect volumes/functions symlink if it exists on the server
-            rm -rf $DEPLOY_PATH/docker/volumes/functions
-            
-            # Recreate relative symlink on the server
-            ln -sf ../../supabase/functions $DEPLOY_PATH/docker/volumes/functions
-            
-            # Start/Restart Docker Services
-            cd $DEPLOY_PATH/docker
-            if [ ! -f .env ]; then
-              cp .env.example .env
-            fi
-            docker compose down --remove-orphans || true
-            docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+            # Reload Nginx to apply changes if needed
+            sudo systemctl reload nginx || true
