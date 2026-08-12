@@ -74,6 +74,12 @@ jobs:
               echo "${{ secrets.DOCKER_ENV }}" > $DEPLOY_PATH/docker/.env
             fi
             
+            # Delete broken/incorrect volumes/functions symlink if it exists on the server
+            rm -rf $DEPLOY_PATH/docker/volumes/functions
+            
+            # Recreate relative symlink on the server
+            ln -sf ../../supabase/functions $DEPLOY_PATH/docker/volumes/functions
+            
             # Start/Restart Docker Services
             cd $DEPLOY_PATH/docker
             if [ ! -f .env ]; then
