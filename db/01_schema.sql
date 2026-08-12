@@ -1836,7 +1836,6 @@ GRANT USAGE ON SCHEMA public TO postgres;
 GRANT USAGE ON SCHEMA public TO anon;
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT USAGE ON SCHEMA public TO service_role;
-GRANT USAGE ON SCHEMA public TO sandbox_exec;
 
 
 --
@@ -1954,7 +1953,6 @@ GRANT ALL ON FUNCTION public.update_updated_at_column() TO service_role;
 GRANT ALL ON TABLE public.ai_usage_logs TO anon;
 GRANT ALL ON TABLE public.ai_usage_logs TO authenticated;
 GRANT ALL ON TABLE public.ai_usage_logs TO service_role;
-GRANT SELECT,INSERT ON TABLE public.ai_usage_logs TO sandbox_exec;
 
 
 --
@@ -1964,7 +1962,6 @@ GRANT SELECT,INSERT ON TABLE public.ai_usage_logs TO sandbox_exec;
 GRANT ALL ON TABLE public.chat_takeovers TO anon;
 GRANT ALL ON TABLE public.chat_takeovers TO authenticated;
 GRANT ALL ON TABLE public.chat_takeovers TO service_role;
-GRANT SELECT,INSERT ON TABLE public.chat_takeovers TO sandbox_exec;
 
 
 --
@@ -1974,7 +1971,6 @@ GRANT SELECT,INSERT ON TABLE public.chat_takeovers TO sandbox_exec;
 GRANT ALL ON TABLE public.contact_usage TO anon;
 GRANT ALL ON TABLE public.contact_usage TO authenticated;
 GRANT ALL ON TABLE public.contact_usage TO service_role;
-GRANT SELECT,INSERT ON TABLE public.contact_usage TO sandbox_exec;
 
 
 --
@@ -1984,7 +1980,6 @@ GRANT SELECT,INSERT ON TABLE public.contact_usage TO sandbox_exec;
 GRANT ALL ON TABLE public.conversations TO anon;
 GRANT ALL ON TABLE public.conversations TO authenticated;
 GRANT ALL ON TABLE public.conversations TO service_role;
-GRANT SELECT,INSERT ON TABLE public.conversations TO sandbox_exec;
 
 
 --
@@ -1994,7 +1989,6 @@ GRANT SELECT,INSERT ON TABLE public.conversations TO sandbox_exec;
 GRANT ALL ON TABLE public.faq_usage_logs TO anon;
 GRANT ALL ON TABLE public.faq_usage_logs TO authenticated;
 GRANT ALL ON TABLE public.faq_usage_logs TO service_role;
-GRANT SELECT,INSERT ON TABLE public.faq_usage_logs TO sandbox_exec;
 
 
 --
@@ -2004,7 +1998,6 @@ GRANT SELECT,INSERT ON TABLE public.faq_usage_logs TO sandbox_exec;
 GRANT ALL ON TABLE public.faqs TO anon;
 GRANT ALL ON TABLE public.faqs TO authenticated;
 GRANT ALL ON TABLE public.faqs TO service_role;
-GRANT SELECT,INSERT ON TABLE public.faqs TO sandbox_exec;
 
 
 --
@@ -2014,7 +2007,6 @@ GRANT SELECT,INSERT ON TABLE public.faqs TO sandbox_exec;
 GRANT ALL ON TABLE public.fcm_tokens TO anon;
 GRANT ALL ON TABLE public.fcm_tokens TO authenticated;
 GRANT ALL ON TABLE public.fcm_tokens TO service_role;
-GRANT SELECT,INSERT ON TABLE public.fcm_tokens TO sandbox_exec;
 
 
 --
@@ -2024,7 +2016,6 @@ GRANT SELECT,INSERT ON TABLE public.fcm_tokens TO sandbox_exec;
 GRANT ALL ON TABLE public.leads TO anon;
 GRANT ALL ON TABLE public.leads TO authenticated;
 GRANT ALL ON TABLE public.leads TO service_role;
-GRANT SELECT,INSERT ON TABLE public.leads TO sandbox_exec;
 
 
 --
@@ -2034,7 +2025,6 @@ GRANT SELECT,INSERT ON TABLE public.leads TO sandbox_exec;
 GRANT ALL ON TABLE public.message_queue TO anon;
 GRANT ALL ON TABLE public.message_queue TO authenticated;
 GRANT ALL ON TABLE public.message_queue TO service_role;
-GRANT SELECT,INSERT ON TABLE public.message_queue TO sandbox_exec;
 
 
 --
@@ -2044,7 +2034,6 @@ GRANT SELECT,INSERT ON TABLE public.message_queue TO sandbox_exec;
 GRANT ALL ON TABLE public.orders TO anon;
 GRANT ALL ON TABLE public.orders TO authenticated;
 GRANT ALL ON TABLE public.orders TO service_role;
-GRANT SELECT,INSERT ON TABLE public.orders TO sandbox_exec;
 
 
 --
@@ -2054,7 +2043,6 @@ GRANT SELECT,INSERT ON TABLE public.orders TO sandbox_exec;
 GRANT ALL ON TABLE public.platform_settings TO anon;
 GRANT ALL ON TABLE public.platform_settings TO authenticated;
 GRANT ALL ON TABLE public.platform_settings TO service_role;
-GRANT SELECT,INSERT ON TABLE public.platform_settings TO sandbox_exec;
 
 
 --
@@ -2064,7 +2052,6 @@ GRANT SELECT,INSERT ON TABLE public.platform_settings TO sandbox_exec;
 GRANT ALL ON TABLE public.products TO anon;
 GRANT ALL ON TABLE public.products TO authenticated;
 GRANT ALL ON TABLE public.products TO service_role;
-GRANT SELECT,INSERT ON TABLE public.products TO sandbox_exec;
 
 
 --
@@ -2074,7 +2061,6 @@ GRANT SELECT,INSERT ON TABLE public.products TO sandbox_exec;
 GRANT ALL ON TABLE public.profiles TO anon;
 GRANT ALL ON TABLE public.profiles TO authenticated;
 GRANT ALL ON TABLE public.profiles TO service_role;
-GRANT SELECT,INSERT ON TABLE public.profiles TO sandbox_exec;
 
 
 --
@@ -2084,7 +2070,6 @@ GRANT SELECT,INSERT ON TABLE public.profiles TO sandbox_exec;
 GRANT ALL ON TABLE public.settings TO anon;
 GRANT ALL ON TABLE public.settings TO authenticated;
 GRANT ALL ON TABLE public.settings TO service_role;
-GRANT SELECT,INSERT ON TABLE public.settings TO sandbox_exec;
 
 
 --
@@ -2094,7 +2079,6 @@ GRANT SELECT,INSERT ON TABLE public.settings TO sandbox_exec;
 GRANT ALL ON TABLE public.staff_accounts TO anon;
 GRANT ALL ON TABLE public.staff_accounts TO authenticated;
 GRANT ALL ON TABLE public.staff_accounts TO service_role;
-GRANT SELECT,INSERT ON TABLE public.staff_accounts TO sandbox_exec;
 
 
 --
@@ -2104,7 +2088,6 @@ GRANT SELECT,INSERT ON TABLE public.staff_accounts TO sandbox_exec;
 GRANT ALL ON TABLE public.user_roles TO anon;
 GRANT ALL ON TABLE public.user_roles TO authenticated;
 GRANT ALL ON TABLE public.user_roles TO service_role;
-GRANT SELECT,INSERT ON TABLE public.user_roles TO sandbox_exec;
 
 
 --
@@ -2114,69 +2097,42 @@ GRANT SELECT,INSERT ON TABLE public.user_roles TO sandbox_exec;
 GRANT ALL ON TABLE public.user_wsender_sessions TO anon;
 GRANT ALL ON TABLE public.user_wsender_sessions TO authenticated;
 GRANT ALL ON TABLE public.user_wsender_sessions TO service_role;
-GRANT SELECT,INSERT ON TABLE public.user_wsender_sessions TO sandbox_exec;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sandbox_exec;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT,INSERT ON TABLES TO sandbox_exec;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 
 
 --
