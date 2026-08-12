@@ -34,6 +34,16 @@ jobs:
           cd frontend
           npm run build
 
+      - name: Copy Nginx Config to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "nginx/app.buildstart.io.conf"
+          target: "/tmp/buildstart-nginx"
+
       - name: Deploy Frontend to Nginx Web Root
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -45,7 +55,7 @@ jobs:
           target: "${{ secrets.FRONTEND_WEB_ROOT || '/var/www/app.buildstart.io' }}"
           strip_components: 2
 
-      - name: Fix Permissions and Reload Nginx
+      - name: Configure Nginx and Install SSL Certificate
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -55,8 +65,28 @@ jobs:
           script: |
             FRONTEND_WEB_ROOT="${{ secrets.FRONTEND_WEB_ROOT || '/var/www/app.buildstart.io' }}"
             
-            # Ensure correct ownership
+            # Ensure the web root folder exists and has correct ownership
+            sudo mkdir -p $FRONTEND_WEB_ROOT
             sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} $FRONTEND_WEB_ROOT
             
-            # Reload Nginx to apply changes if needed
+            # Copy Nginx config file to site-available and enable it
+            sudo cp /tmp/buildstart-nginx/nginx/app.buildstart.io.conf /etc/nginx/sites-available/
+            sudo ln -sf /etc/nginx/sites-available/app.buildstart.io.conf /etc/nginx/sites-enabled/
+            
+            # Test Nginx syntax and reload
+            sudo nginx -t
             sudo systemctl reload nginx || true
+            
+            # Install Certbot if it's not present on the server
+            if ! command -v certbot &> /dev/null; then
+              sudo apt-get update && sudo apt-get install certbot python3-certbot-nginx -y
+            fi
+            
+            # Automatically request/install SSL certificate and configure redirect
+            sudo certbot --nginx -d app.buildstart.io --non-interactive --agree-tos --email "${{ secrets.SSL_EMAIL || 'admin@buildstart.io' }}" --redirect --reinstall --keep-until-expiring
+            
+            # Final Nginx reload to ensure everything is live
+            sudo systemctl reload nginx || true
+            
+            # Clean up temp folder
+            rm -rf /tmp/buildstart-nginx
