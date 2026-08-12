@@ -1,0 +1,83 @@
+name: Deploy BuildStart
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Frontend
+        env:
+          VITE_SUPABASE_URL: https://supabase.buildstart.io
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: selfhosted
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Deploy Backend Files (Docker, DB, Supabase)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "docker/**,db/**,supabase/**"
+          target: "${{ secrets.DEPLOY_PATH || '/var/www/buildstart' }}"
+
+      - name: Deploy Frontend to Nginx Web Root
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "frontend/dist/**"
+          target: "${{ secrets.FRONTEND_WEB_ROOT || '/var/www/app.buildstart.io' }}"
+          strip_components: 2
+
+      - name: Run Server Setup and Start Services
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/var/www/buildstart' }}"
+            FRONTEND_WEB_ROOT="${{ secrets.FRONTEND_WEB_ROOT || '/var/www/app.buildstart.io' }}"
+            
+            # Fix permissions for Nginx web root if needed
+            sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} $FRONTEND_WEB_ROOT
+            
+            # Write DOCKER_ENV if it exists
+            if [ -n "${{ secrets.DOCKER_ENV }}" ]; then
+              echo "${{ secrets.DOCKER_ENV }}" > $DEPLOY_PATH/docker/.env
+            fi
+            
+            # Start/Restart Docker Services
+            cd $DEPLOY_PATH/docker
+            if [ ! -f .env ]; then
+              cp .env.example .env
+            fi
+            docker compose down --remove-orphans || true
+            docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
