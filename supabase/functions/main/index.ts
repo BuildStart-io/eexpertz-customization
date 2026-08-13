@@ -20,7 +20,7 @@ serve(async (req: Request) => {
       workerTimeoutMs: 5 * 60 * 1000,
       noModuleCache: false,
       importMapPath: null,
-      envVars: Deno.env.toObject()
+      envVars: Object.entries(Deno.env.toObject())
     });
     
     return await worker.fetch(req);
