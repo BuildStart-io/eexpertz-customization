@@ -115,5 +115,11 @@ jobs:
               echo "WARNING: 'supabase-db' container not found or not running. Schema migrations skipped."
             fi
             
+            # Restart the edge functions container to bind the updated volume mounts
+            if docker ps --format '{{.Names}}' | grep -q "^supabase-edge-functions$"; then
+              echo "Restarting supabase-edge-functions container..."
+              docker restart supabase-edge-functions
+            fi
+            
             # 5. CLEAN UP TEMP FILES
             rm -rf /tmp/buildstart-deploy
