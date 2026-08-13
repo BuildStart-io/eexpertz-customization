@@ -118,7 +118,13 @@ serve(async (req) => {
       await ensureBucket(bucket);
 
       const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
-      const key = `${folderRaw}/${crypto.randomUUID()}.${ext}`;
+      let key = "";
+      if (ext === "pdf") {
+        const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, "_");
+        key = `${folderRaw}/${safeName}`;
+      } else {
+        key = `${folderRaw}/${crypto.randomUUID()}.${ext}`;
+      }
       const body = new Uint8Array(await file.arrayBuffer());
 
       const put = await aws.fetch(`${ENDPOINT}/${bucket}/${key}`, {
