@@ -480,7 +480,20 @@ export default function Settings() {
       // Add new media items not yet in sequence
       const existingUrls = new Set(filtered.filter(i => i.type === "media").map(i => (i as any).url));
       const newItems = newUrls.filter(u => !existingUrls.has(u)).map(u => ({ type: "media" as const, url: u }));
-      return [...filtered, ...newItems];
+      const newSequence = [...filtered, ...newItems];
+
+      // Auto-save when media changes
+      setTimeout(() => {
+        saveSettings("welcome_message", { 
+          text: welcomeMessageRef.current, 
+          media_url: welcomeMediaUrlRef.current || null,
+          media_urls: newUrls,
+          bypass_triggers: bypassTriggersRef.current,
+          welcome_sequence: newSequence,
+        });
+      }, 100);
+
+      return newSequence;
     });
   };
 
@@ -489,7 +502,22 @@ export default function Settings() {
       const arr = [...prev];
       const targetIndex = direction === "up" ? index - 1 : index + 1;
       if (targetIndex < 0 || targetIndex >= arr.length) return arr;
-      [arr[index], arr[targetIndex]] = [arr[targetIndex], arr[index]];
+      
+      const temp = arr[index];
+      arr[index] = arr[targetIndex];
+      arr[targetIndex] = temp;
+      
+      // Auto-save when order changes
+      setTimeout(() => {
+        saveSettings("welcome_message", { 
+          text: welcomeMessageRef.current, 
+          media_url: welcomeMediaUrlRef.current || null,
+          media_urls: welcomeMediaUrlsRef.current,
+          bypass_triggers: bypassTriggersRef.current,
+          welcome_sequence: arr,
+        });
+      }, 100);
+      
       return arr;
     });
   };
