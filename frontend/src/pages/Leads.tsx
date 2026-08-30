@@ -1,3 +1,4 @@
+import { getFunctionUrl } from "@/lib/functions";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -263,7 +264,7 @@ export default function Leads() {
       const displayPhone = String(row.phone_number || "").split("@")[0];
       const message = `👤 NEW CUSTOMER ASSIGNED\n\nName: ${row.customer_name || "Unknown"}\nContact: ${displayPhone}\n\nPlease follow up with this customer.`;
 
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`, {
+      await fetch(getFunctionUrl("send-whatsapp"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,

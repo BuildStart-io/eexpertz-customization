@@ -1,3 +1,4 @@
+import { getFunctionUrl } from "@/lib/functions";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
@@ -56,7 +57,7 @@ export default function StaffManager() {
     setLoading(true);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
+        getFunctionUrl("manage-staff"),
         {
           method: "POST",
           headers: {
@@ -99,7 +100,7 @@ export default function StaffManager() {
     try {
       const token = await getAuthToken();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
+        getFunctionUrl("manage-staff"),
         {
           method: "POST",
           headers: {
@@ -137,7 +138,7 @@ export default function StaffManager() {
     try {
       const token = await getAuthToken();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
+        getFunctionUrl("manage-staff"),
         {
           method: "POST",
           headers: {
@@ -164,7 +165,7 @@ export default function StaffManager() {
     try {
       const token = await getAuthToken();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
+        getFunctionUrl("manage-staff"),
         {
           method: "POST",
           headers: {
@@ -192,7 +193,7 @@ export default function StaffManager() {
     try {
       const token = await getAuthToken();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
+        getFunctionUrl("manage-staff"),
         {
           method: "POST",
           headers: {

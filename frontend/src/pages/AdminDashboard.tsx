@@ -1,3 +1,4 @@
+import { getFunctionName } from "@/lib/functions";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { planLabel } from "@/lib/planLabels";
@@ -35,7 +36,7 @@ export default function AdminDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await supabase.functions.invoke("admin-manage-users", {
+      const res = await supabase.functions.invoke(getFunctionName("admin-manage-users"), {
         body: { action: "list_users" },
       });
 

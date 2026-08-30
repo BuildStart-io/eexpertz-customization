@@ -11,7 +11,12 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 
+const SUPABASE_SCHEMA = import.meta.env.VITE_SUPABASE_SCHEMA || "eexpertz_customization";
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  db: {
+    schema: SUPABASE_SCHEMA,
+  },
   auth: {
     storage: localStorage,
     persistSession: true,

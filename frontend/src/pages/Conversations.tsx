@@ -1,3 +1,4 @@
+import { getFunctionUrl } from "@/lib/functions";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -406,7 +407,7 @@ export default function Conversations() {
       if (sessionError) throw sessionError;
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
+        getFunctionUrl("send-whatsapp"),
         {
           method: "POST",
           headers: {
