@@ -1,109 +1,75 @@
-# BuildStart.io — self-hosted WhatsApp AI bot
+# eexpertz Customizations (`eexpertz-customization`)
 
-Everything in this bundle runs on **your** infrastructure. The only thing left on
-Lovable is a single stateless function, `ai-generate`, which forwards prompts to
-the Lovable AI Gateway and returns text. It touches no database and stores nothing.
+This repository contains the custom features and system enhancements built for **eexpertz Academy** (Alibaba Selling Master Courses):
 
-```
-┌──────────── your server ─────────────────────────────┐
-│  frontend (Vite dashboard)                           │
-│        │ supabase-js                                 │
-│  self-hosted Supabase                                │
-│    postgres + auth + kong + edge-runtime             │
-│      ├ webhook-wsender ─► message_queue              │
-│      ├ process-message  (queue drainer, cron)        │
-│      ├ ai-chat  ── builds prompt, quotas, orders ────┼──► Lovable ai-generate ──► AI Gateway
-│      ├ send-whatsapp ──► WAHA / Wsender              │
-│      ├ media-storage ──► MinIO                       │
-│      └ send-push ──────► Firebase                    │
-└──────────────────────────────────────────────────────┘
-```
+---
 
-`ai-chat` stays local on purpose: catalog, FAQs, plan quotas, order extraction and
-`ai_usage_logs` never leave your database. The prompt, model
-(`google/gemini-3-flash-preview`) and `max_tokens` (500) are byte-identical to the
-Lovable-hosted version, so reply quality is unchanged.
+### 1. 🔄 Automated Modular Message Sets Engine (`/dashboard/settings` → Automated Message Sets)
+- **Full Granular Customization**:
+  - Every individual message and media block is editable (Name/Title, Content, Media Attachment, Captions, Sequence Order).
+  - Ability to delete individual items, add new items (`+ Text`, `+ Audio / Voice Note`, `+ Image`, `+ Video`, `+ Document`), and reorder sequence using Up/Down controls.
+- **Set 1 (Welcome Sequence)**:
+  - Automatically dispatched on the customer's first inbound message.
+  - Includes audio voice note introduction, course fee inquiry guidance text, student feedback/earnings proof link (`feedbacks.eexpertzacademy.com`), and course module preview graphics.
+- **Set 2 (Discounts & Limited-Time Urgency)**:
+  - Automatically dispatched on any follow-up message from inquirers.
+  - Contains discount guarantee details (LKR 4,900 promo price vs LKR 10,900 regular price), discount explanation voice notes, spots remaining urgency updates, and bonus modules.
+  - **Time-Restricted Delivery**: Supports daily cutoff checks (e.g. 14:00 Sri Lanka time) so limited-time bonus offers are only sent before the deadline.
+- **Set 3 (Course Fee & Bank Details)**:
+  - Dispatched strictly when the customer asks for course fees, pricing, or payment accounts across English, Sinhala Unicode, or Singlish keywords.
+  - Delivers complete bank transfer details for NDB Bank, Sampath Bank, and BOC Bank, payment confirmation instructions, and remaining spot updates.
+- **Custom Message Sets**:
+  - Create unlimited custom sequential message sets with custom trigger keywords and full multi-media support.
 
-## Layout
+---
 
-```
-db/01_schema.sql        full public schema: tables, enums, RLS, GRANTs, functions, triggers
-db/02_seed.sql          plan limits + first-admin template (no tenant data — clean start)
-db/03_cron.sql          pg_cron jobs (queue drainer, follow-ups)
-supabase/functions/     all 12 edge functions (ai-generate is NOT here — it lives on Lovable)
-frontend/               the full dashboard, including super-admin and billing pages
-.env.example            every variable, split by process
-```
+### 2. 🧾 Payment Slip Intake & Student Verification Workflow
+- **Automated Receipt Proof Detection**:
+  - Detects image and PDF payment slips sent by students.
+  - Automatically prompts the student to submit their **Full Name**, **Email Address**, and **Phone Number**.
+- **`Slip Sent` Stage Tracking**:
+  - Marks students as **`Slip Sent`** (`pending_verification`) rather than auto-enrolling them.
+  - Logs a pending order in the system with extracted student contact details for administrative verification.
+- **Verification Confirmation**:
+  - Sends an automated receipt acknowledgment reassuring the student that their payment is being verified and course access will be activated within 1 hour.
 
-## Boot order
+---
 
-1. **Start Supabase self-hosted** (the official `docker/docker-compose.yml` from
-   `supabase/supabase`). Keep `db`, `auth`, `rest`, `kong`, `storage`, `studio`,
-   `functions` (edge-runtime).
-2. **Schema**
-   ```bash
-   psql "$DB_URL" -f db/01_schema.sql
-   psql "$DB_URL" -f db/02_seed.sql
-   ```
-3. **Auth**: disable public sign-ups (`GOTRUE_DISABLE_SIGNUP=true`) — this product is
-   login-only. Create your first user in Studio, then run the commented block at the
-   bottom of `02_seed.sql` to give it a profile + `super_admin` role.
-4. **Edge functions**: mount `supabase/functions` into the edge-runtime container and
-   give it the function env vars from `.env.example`. All functions verify JWTs in
-   code, so run the runtime with `--no-verify-jwt`.
-5. **Cron**: fill in the placeholders in `db/03_cron.sql` and run it.
-6. **WAHA**: point its webhook at
-   `http://<your-host>:8000/functions/v1/webhook-wsender`.
-7. **MinIO**: one public bucket per business, named `biz-<user_id>`; `media-storage`
-   creates them on demand.
-8. **Frontend**
-   ```bash
-   cd frontend && cp ../.env.example .env   # keep only the VITE_ lines
-   npm install && npm run dev
-   ```
-9. **Regenerate DB types** after any schema change:
-   ```bash
-   npx supabase gen types typescript --db-url "$DB_URL" > frontend/src/integrations/supabase/types.ts
-   ```
+### 3. ⏸️ "Pay Later" Intent Detection & Automated Takeover
+- **Multilingual Intent Recognition**:
+  - Detects deferred payment responses across English, Sinhala Unicode (`පස්සෙ ගෙවන්නම්`, `පස්සෙ දාන්නම්`, `ලබන මාසෙ`, `සැලරි හම්බුනාම`, `දැනට බැහැ`, etc.), and Singlish (`passe dannam`, `passe gewannam`, `after salary`, etc.).
+- **Graceful Closing & Bot Takeover**:
+  - Sends a customizable polite closing message (*"හොඳයි, ඔබට පහසු වේලාවක අප හා සම්බන්ධ වන්න. ස්තූතියි! ☺️"*).
+  - Sets student stage to **`Pay Later`** (`pay_later`).
+  - Automatically engages **Chat Takeover** (`is_taken_over = true`) to prevent subsequent automated sets or bot replies from firing.
 
-## The Lovable side
+---
 
-One function, `ai-generate`:
+### 4. 👥 Customers Management Dashboard (`/dashboard/customers`)
+- **Verified Students Directory**:
+  - Filtered exclusively to show students who have submitted their payment slips and contact details.
+  - Clean table layout displaying Student Name, Phone Number, Email Address, Submitted Receipt Proof, Stage Badge, and Enrollment Status.
+- **Click-to-Copy Contact Details**:
+  - Direct one-click clipboard copy on clicking phone numbers and email addresses.
+- **Manual Enroll / Unenroll Toggle**:
+  - One-click **`Enroll`** action for students with `Slip Sent` status.
+  - Direct **`Unenroll`** action button for already enrolled students.
 
-```
-POST https://<lovable-ref>.supabase.co/functions/v1/ai-generate
-x-bot-key: <bot key>
-{ "systemPrompt": "...", "messages": [{"role":"user","content":"hi"}],
-  "model": "google/gemini-3-flash-preview", "maxTokens": 500 }
+---
 
-200 { "text": "...", "model": "...", "usage": { "promptTokens": 812, ... } }
-```
+### 5. 💬 Live Chats with Contact Preview Badges (`/dashboard/conversations`)
+- **Stage Badges on Chat Preview Cards**:
+  - Displays customer stage badges directly on the left conversation list cards (**`Set 1`**, **`Set 2`**, **`Set 3`**, **`Slip Sent`**, **`Enrolled`**, **`Pay Later`**) for immediate customer stage visibility.
+- **Multi-Media Message Support**:
+  - Renders voice notes, images, videos, documents, and interactive transcripts cleanly.
 
-Errors: `401` bad bot key, `400` bad request, `429` rate limited (retry with
-backoff), `402` credits exhausted, `502` upstream failure.
+---
 
-## Running many bots against the same gateway
+### 6. 🗄️ Isolated Database Schema & Suffixed Edge Functions (`eexpertz_customization`)
+- **Schema Isolation**:
+  - All application tables and logic live in a dedicated `eexpertz_customization` schema to avoid data or trigger mixing.
+- **Dedicated Auth Triggers**:
+  - `on_auth_user_created_eexpertz`, `on_auth_user_role_eexpertz`, and `on_auth_user_settings_eexpertz` on `auth.users`.
+- **Suffixed Edge Functions**:
+  - Custom edge functions deployed with `-eexpertz` suffix (`process-message-eexpertz`, `ai-chat-eexpertz`, `send-whatsapp-eexpertz`, `webhook-wsender-eexpertz`, `wsender-sessions-eexpertz`, `media-storage-eexpertz`, etc.).
 
-This is the point of the split, and it works without changes:
-
-- Each bot is its own self-hosted stack (own Postgres, own WAHA session, own MinIO
-  bucket) with its own `BOT_API_KEY`.
-- `ai-generate` is stateless, so N bots hitting it concurrently is just N HTTP
-  requests; nothing is shared, nothing collides.
-- Add a bot: append a new key to the gateway's `BOT_API_KEYS` (comma-separated),
-  set `BOT_API_KEY` on the new bot, done. No redeploy of the Lovable function needed
-  beyond the secret update.
-- Revoke a bot: remove its key from `BOT_API_KEYS`; it starts getting `401`.
-- Quotas stay **local** to each bot (`ai_usage_logs`, `contact_usage`, plan tiers).
-  The gateway deliberately enforces no per-key ceiling, so all bots draw from the
-  same Lovable credit pool. Watch total credits, and if one tenant must be capped,
-  cap it in that bot's `platform_settings.plan_limits`.
-- Only shared cost centre is AI credits. Everything else scales per bot.
-
-## Security notes
-
-- `LOVABLE_API_KEY` never leaves Lovable. Bots only ever hold a bot key.
-- Bot keys are bearer credentials: keep them in the edge-runtime env, never in
-  frontend code.
-- All tables are RLS-protected and scoped by `user_id`; roles live in `user_roles`
-  and are checked with the `has_role()` security-definer function.
