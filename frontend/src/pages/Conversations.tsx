@@ -62,11 +62,87 @@ export default function Conversations() {
   const [takenOverChats, setTakenOverChats] = useState<Set<string>>(new Set());
   const [togglingTakeover, setTogglingTakeover] = useState(false);
   const [trackedPhones, setTrackedPhones] = useState<Map<string, string[]>>(new Map());
+  const [customerStages, setCustomerStages] = useState<Map<string, { current_stage: string; received_sets: string[] }>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const { effectiveUserId } = useStaffAccess();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Fetch customer stages
+  const fetchCustomerStages = useCallback(async () => {
+    if (!user) return;
+    try {
+      const ownerId = effectiveUserId || user.id;
+      const { data } = await supabase
+        .from("customer_stages" as any)
+        .select("phone_number, current_stage, received_sets")
+        .eq("user_id", ownerId);
+
+      if (data) {
+        const stageMap = new Map<string, { current_stage: string; received_sets: string[] }>();
+        for (const row of data as any[]) {
+          stageMap.set(row.phone_number, {
+            current_stage: row.current_stage,
+            received_sets: Array.isArray(row.received_sets) ? row.received_sets : [],
+          });
+        }
+        setCustomerStages(stageMap);
+      }
+    } catch (err) {
+      console.error("Error fetching customer stages:", err);
+    }
+  }, [user, effectiveUserId]);
+
+  const renderStageBadge = (phoneNumber: string) => {
+    const stageInfo = customerStages.get(phoneNumber);
+    if (!stageInfo) return null;
+    const { current_stage, received_sets } = stageInfo;
+
+    if (current_stage === "completed" || current_stage === "enrolled") {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+          Enrolled
+        </span>
+      );
+    }
+    if (current_stage === "pending_verification" || current_stage === "receipt_pending") {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+          Slip Sent
+        </span>
+      );
+    }
+    if (current_stage === "pay_later") {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/15 text-orange-700 dark:text-orange-400 border border-orange-500/30">
+          Pay Later
+        </span>
+      );
+    }
+    if (current_stage === "set3" || received_sets.includes("set3")) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30">
+          Set 3
+        </span>
+      );
+    }
+    if (current_stage === "set2" || received_sets.includes("set2")) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+          Set 2
+        </span>
+      );
+    }
+    if (current_stage === "set1" || received_sets.includes("set1")) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30">
+          Set 1
+        </span>
+      );
+    }
+    return null;
+  };
 
   // Fetch tracked FAQ usage phones
   const fetchTrackedPhones = useCallback(async () => {
@@ -124,7 +200,8 @@ export default function Conversations() {
   useEffect(() => {
     fetchTakeovers();
     fetchTrackedPhones();
-  }, [fetchTakeovers, fetchTrackedPhones]);
+    fetchCustomerStages();
+  }, [fetchTakeovers, fetchTrackedPhones, fetchCustomerStages]);
 
   const toggleTakeover = useCallback(async (phoneNumber: string) => {
     if (!user || togglingTakeover) return;
@@ -496,6 +573,7 @@ export default function Conversations() {
                                 )}>
                                   {thread.sender_name}
                                 </p>
+                                {renderStageBadge(thread.phone_number)}
                                 {isTracked && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -518,10 +596,12 @@ export default function Conversations() {
                                 {formatTime(thread.last_time)}
                               </span>
                             </div>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {thread.phone_number}
-                            </p>
+                            <div className="flex items-center justify-between mt-0.5">
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {thread.phone_number}
+                              </p>
+                            </div>
                             <p className="text-sm text-muted-foreground truncate mt-0.5">
                               {thread.last_message}
                             </p>

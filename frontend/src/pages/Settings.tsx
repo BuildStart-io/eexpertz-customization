@@ -14,8 +14,46 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, MessageSquare, CreditCard, Copy, Check, Smartphone, RefreshCw, Wifi, WifiOff, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Clock, Lock } from "lucide-react";
 import WelcomeMediaUpload from "@/components/settings/WelcomeMediaUpload";
 import StaffManager from "@/components/settings/StaffManager";
+import MessageSetsManager, { MessageSetsConfig } from "@/components/settings/MessageSetsManager";
 import { useStaffAccess } from "@/hooks/useStaffAccess";
 import { useEffectivePlan } from "@/hooks/useEffectivePlan";
+
+const defaultMessageSetsConfig: MessageSetsConfig = {
+  enabled: true,
+  set1: {
+    enabled: true,
+    audio_url: "",
+    text1: "පාඨමාලා ගාස්තු ඇතුලු විස්තර දැනගන්න අවශ්යනම් Course Fee කියලා Message එකක්  එවන්න . ☺️🧡",
+    text2: "⭕ අපේ Alibaba Selling පාඨමාලව හැදැරූ සිසුන්ගේ Earning Proof සහ Student Feedbacks ගැන දැනගැනීමට පහත ලින්ක් එක ක්ලික් කරන්න.  👇\n\nfeedbacks.eexpertzacademy.com",
+    img1_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/9d71b992-cf2b-4dc0-9691-16216ce5138a.png",
+    img1_caption: "මාසෙන් රුපියල් ලක්ශ 43 ක් ! 🫵🧡\n\n🟠මේ තියෙන්නෙ අපි මාර්තු වල පටන් ගත්ත Alibaba Selling Business එකක ගිය මාසෙ (June) සේල් එක.  ඔයාට පේනවා ඇති අපි ගිය මාසෙ විතරක් රුපියල් ලක්ශ 43 කට ආසන්න සේල් එකක් කරලා තියෙනවා. ඒ වගේම Orders 2100 කට ආසන්න ප්රමාණයක් ඇවිල්ලා තියෙනවා. \n\n🟠මෙතන මේ ලක්ශ 43 ක සේල් එකෙන් අපිට රුපියල් ලක්ශ 20 කට වැඩි ලාභයක් තියෙනවා. දවස් 30 න්  රුපියල් ලක්ශ 20 ක් කියන්නෙ හිතාගන්නවත් බෑ නේද ?\n\n🟠 මෙච්චර අඩු කාලෙකින් මේ වගේ ආදයමක් ගන්න පුලුවන් එකම බිස්නස් එක තමයි Alibaba Selling කියලා කියන්නේ.\n\nමේවා තමා ඇත්තම ඔන්ලයින් බිස්නස් 💪🧡",
+    img2_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/a193b2b1-cdd9-4743-bf58-bef03c4cca5d.jpg"
+  },
+  set2: {
+    enabled: true,
+    img3_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/a5251727-f2ea-4de1-8472-e3641ec05e3a.jpg",
+    img3_caption: "✅සම්පූර්ණ කෝස් Fee එක රු.10 900 යි.නමුත් අද දින මෙම පාඨමාලාව මිලදී ගන්නා පලමු සිසුන් 25 දෙනාට මෙය රු.4900 කට මිලදී ගන්න පුලුවන්.\n\n✅පාඨමාලාව මිලදි ගන්න කැමතිද කියල අපිට හැකි ඉක්මනින් Message එකක් දාන්න.\n\nUpdate‼️\nදැනට අද දින 21 දෙනෙක් මෙය මිලදී අරගෙන ඇති නිසා මෙය ඉහත මිලට ලබා ගත හැක්කේ තවත් සිසුන් 4 දෙනෙකුට පමණි.",
+    audio1_url: "",
+    audio2_url: "",
+    img4_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/ceef0369-ab3f-4efd-b14e-4211cf30ceb0.jpg",
+    img4_caption: "Update‼️\nදැනට අද දින 22 දෙනෙක් මෙය මිලදී අරගෙන ඇති නිසා මෙය ඉහත මිලට ලබා ගත හැක්කේ තවත් සිසුන් 3 දෙනෙකුට පමණි.",
+    text_time_restricted: "මේක ඇත්තටම ඊයෙ අපි දීපු offer එකක් . ඒත් ඊයේ කෝස් එක ගත්තෙ 25 න් 21 ක් විතරයි . ඒක නිසා තව 4 දෙනෙක්ට අද අවස්තාව තියෙනව ඊයෙ offer price එකටම පාඨමාලව මිලදී ගන්න.",
+    cutoff_hour_sl: 14,
+    img5_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/36878d8f-836b-48fa-b46a-7b8c4d5f8065.jpg",
+    img5_caption: "මේක ඊයේ End උන  Offer එකක්. ඒත්  අද  උදෑසන 10 ට පෙර පාඨමාලව මිලදී ගන්න අයටත් අපි මේ Offer එක ලබා දෙනව. ඒ කියන්නෙ අද රු.4900 ක් දීලා අපේ Alibaba Selling Master Course එක මිලදී ගන්නකොට තවත් පාඨමාලා දෙකක් ම නොමිලේ ලැබෙනවා. ☺️🧡🧡"
+  },
+  set3: {
+    enabled: true,
+    bank_details_text: "අද දින *Alibaba Selling Master Course*  එක මිලදි ගන්න අය පහත Bank Details  වලට *රු.4900 ක මුදලක් බැර* කර රිසිට්පතේ Photo එක්ක් සමග ඔබේ නම සහ Email එක 0779638667 යන අංකයට WhatsApp කරන්න.   👇\n\nBank - NDB Bank\nHolder Name - eExpertz\nAccount Number - *111000271906*\nBranch - Maharagama\n\nBank - Sampath Bank\nHolder Name- eExpertz\nAccount Number - *109214030103*\nBank Branch- Maharagama\n\nBank - BOC Bank\nHolder Name- eExpertz\nAccount Number - *95577622*\nBank Branch- Maharagama\n\n⭕ *Payment එක කරලා රිසිට් එක එව්වට පස්සෙ විනාඩි 10 ඇතුලත සම්පූර්ණ පාඨමාලාවම ලැබෙනවා.*",
+    urgency_text: "Update‼️\nදැනට අද දින 23 දෙනෙක් මෙය මිලදී අරගෙන ඇති නිසා මෙය ඉහත මිලට ලබා ගත හැක්කේ තවත් සිසුන් 2 දෙනෙකුට පමණි.",
+    confirmation_text: "Payment එක දාන්න පැය කිහිපයක් යනවනම් සල්ලි දාන්න කලින් Message  එකක් දාල තාම 25 දෙනා Fill වෙලා නැද්ද කියලා Confirm  කරගෙන Payment  එක දාන්න."
+  },
+  receipt_workflow: {
+    request_details_text: "ඔබගේ ගෙවීම් රිසිට්පත ලැබුණා. කරුණාකර ඔබගේ නම (Full Name), Email ලිපිනය සහ දුරකථන අංකය (Phone Number) මෙහි එවන්න. 📝",
+    onboarding_confirm_text: "ඔබගේ විස්තර ලැබුණා. ඔබගේ Payment එක තහවුරු කර පැය 1ක් (1 hour) ඇතුලත ඔබව පාඨමාලාවට සම්බන්ධ කරනු ලැබේ. ස්තූතියි! ☺️🧡"
+  },
+  pay_later_response: "හොඳයි, ඔබට පහසු වේලාවක අප හා සම්බන්ධ වන්න. ස්තූතියි! ☺️"
+};
 
 interface PaymentAccount {
   account_type: string;
@@ -89,6 +127,9 @@ export default function Settings() {
   const [inactivityFollowupEnabled, setInactivityFollowupEnabled] = useState(false);
   const [inactivityFollowupMessage, setInactivityFollowupMessage] = useState("");
   const [inactivityFollowupHours, setInactivityFollowupHours] = useState<string>("24");
+
+  // Message Sets & Automation
+  const [messageSetsConfig, setMessageSetsConfig] = useState<MessageSetsConfig>(defaultMessageSetsConfig);
 
   // WhatsApp Connection
   const [sessions, setSessions] = useState<WsenderSession[]>([]);
@@ -185,6 +226,13 @@ export default function Settings() {
             setInactivityFollowupMessage(iVal?.text || "");
             setInactivityFollowupEnabled(iVal?.enabled ?? false);
             setInactivityFollowupHours(String(iVal?.hours ?? 24));
+            break;
+          }
+          case "message_sets_config": {
+            const mVal = setting.value as any;
+            if (mVal) {
+              setMessageSetsConfig({ ...defaultMessageSetsConfig, ...mVal });
+            }
             break;
           }
         }
@@ -548,6 +596,10 @@ export default function Settings() {
     });
   };
 
+  const handleSaveMessageSets = () => {
+    saveSettings("message_sets_config", messageSetsConfig);
+  };
+
   const handleSaveAutoResponses = () => {
     saveSettings("auto_responses", { enabled: autoResponsesEnabled });
   };
@@ -620,8 +672,9 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="whatsapp" className="space-y-6">
-          <TabsList className="w-full sm:w-auto">
+          <TabsList className="w-full sm:w-auto flex-wrap">
             <TabsTrigger value="whatsapp" className="flex-1 sm:flex-initial">WhatsApp</TabsTrigger>
+            <TabsTrigger value="messagesets" className="flex-1 sm:flex-initial">Message Sets</TabsTrigger>
             <TabsTrigger value="chatbot" className="flex-1 sm:flex-initial">Chatbot</TabsTrigger>
             <TabsTrigger value="payment" className="flex-1 sm:flex-initial">Payment</TabsTrigger>
             <TabsTrigger value="delivery" className="flex-1 sm:flex-initial">Delivery</TabsTrigger>
@@ -834,202 +887,21 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
+          {/* Message Sets & Automation Tab */}
+          <TabsContent value="messagesets" className="space-y-6">
+            <MessageSetsManager
+              config={messageSetsConfig}
+              onChange={setMessageSetsConfig}
+            />
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleSaveMessageSets} disabled={saving} className="gap-2">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save Message Sets
+              </Button>
+            </div>
+          </TabsContent>
+
           <TabsContent value="chatbot" className="space-y-6">
-            {/* Welcome Message */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Welcome Message
-                </CardTitle>
-                <CardDescription>
-                  This message is sent when a customer first contacts your chatbot
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="welcome">Message</Label>
-                  <Textarea
-                    id="welcome"
-                    value={welcomeMessage}
-                    onChange={(e) => {
-                      setWelcomeMessage(e.target.value);
-                      // Ensure text item exists in sequence
-                      if (e.target.value.trim() && !welcomeSequence.some(i => i.type === "text")) {
-                        setWelcomeSequence(prev => [{ type: "text" }, ...prev]);
-                      }
-                    }}
-                    placeholder="Welcome! How can I help you today?"
-                    rows={4}
-                  />
-                </div>
-                <WelcomeMediaUpload
-                  mediaUrls={welcomeMediaUrls}
-                  onChange={handleMediaUrlsChange}
-                  maxFiles={5}
-                />
-
-                {/* Sending Order */}
-                {welcomeSequence.length > 1 && (
-                  <div className="space-y-2 border-t pt-4">
-                    <Label className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4" />
-                      Sending Order
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Arrange the order in which welcome content is sent to the customer
-                    </p>
-                    <div className="space-y-2">
-                      {welcomeSequence.map((item, index) => {
-                        const isText = item.type === "text";
-                        const mediaUrl = !isText ? (item as { type: "media"; url: string }).url : "";
-                        const isAudio = /\.(mp3|wav|ogg|m4a|aac|opus)$/i.test(mediaUrl);
-                        const isVideo = /\.(mp4|mov|avi|webm)$/i.test(mediaUrl);
-                        const isDoc = /\.pdf$/i.test(mediaUrl);
-                        const fileName = mediaUrl ? mediaUrl.split("/").pop()?.split("?")[0] || "media" : "";
-                        
-                        return (
-                          <div
-                            key={isText ? "text" : mediaUrl}
-                            className="flex items-center gap-2 p-2 rounded-md border bg-card"
-                          >
-                            <span className="text-xs font-mono text-muted-foreground w-5 text-center">{index + 1}</span>
-                            <div className="flex-1 min-w-0">
-                              {isText ? (
-                                <span className="text-sm font-medium flex items-center gap-1.5">
-                                  <MessageSquare className="h-3.5 w-3.5 text-primary" />
-                                  Welcome Text
-                                </span>
-                              ) : (
-                                <span className="text-sm flex items-center gap-1.5 truncate">
-                                  {isAudio ? "🎵" : isVideo ? "🎬" : isDoc ? "📄" : "🖼️"}
-                                  <span className="truncate">{fileName}</span>
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                disabled={index === 0}
-                                onClick={() => moveSequenceItem(index, "up")}
-                              >
-                                <ArrowUp className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                disabled={index === welcomeSequence.length - 1}
-                                onClick={() => moveSequenceItem(index, "down")}
-                              >
-                                <ArrowDown className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Bypass Triggers */}
-                <div className="space-y-2 border-t pt-4">
-                  <Label>Bypass Triggers</Label>
-                  <p className="text-xs text-muted-foreground">
-                    If a customer's first message contains any of these keywords, the welcome message and media will be skipped.
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newBypassTrigger}
-                      onChange={(e) => setNewBypassTrigger(e.target.value)}
-                      placeholder="e.g. reorder, urgent, support"
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addBypassTrigger())}
-                    />
-                    <Button type="button" variant="outline" size="sm" onClick={addBypassTrigger}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {bypassTriggers.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {bypassTriggers.map((trigger) => (
-                        <span
-                          key={trigger}
-                          className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-medium"
-                        >
-                          {trigger}
-                          <button
-                            type="button"
-                            onClick={() => removeBypassTrigger(trigger)}
-                            className="ml-1 text-muted-foreground hover:text-destructive"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <Button onClick={handleSaveWelcome} disabled={saving}>
-                  {saving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save Message
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Order Follow-up Message */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5" />
-                      Order Follow-up Message
-                    </CardTitle>
-                    <CardDescription>
-                      This message is automatically sent to the customer after their order is confirmed
-                    </CardDescription>
-                  </div>
-                  <Switch
-                    checked={orderFollowupEnabled}
-                    onCheckedChange={setOrderFollowupEnabled}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="order-followup">Message</Label>
-                  <Textarea
-                    id="order-followup"
-                    value={orderFollowupMessage}
-                    onChange={(e) => setOrderFollowupMessage(e.target.value)}
-                    placeholder="e.g. Thank you for your order! Visit our website: https://example.com"
-                    rows={4}
-                    disabled={!orderFollowupEnabled}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    This message will be sent as a separate message after the order confirmation reply.
-                  </p>
-                </div>
-                <Button onClick={handleSaveOrderFollowup} disabled={saving}>
-                  {saving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save Follow-up
-                </Button>
-              </CardContent>
-            </Card>
-
             {/* Inactivity Follow-up Message (Growth only) */}
             <Card>
               <CardHeader>

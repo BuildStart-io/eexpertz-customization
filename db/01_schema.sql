@@ -354,6 +354,23 @@ CREATE TABLE public.contact_usage (
 -- Name: conversations; Type: TABLE; Schema: public; Owner: -
 --
 
+CREATE TABLE public.customer_stages (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    phone_number text NOT NULL,
+    current_stage text DEFAULT 'set1'::text NOT NULL,
+    received_sets jsonb DEFAULT '[]'::jsonb NOT NULL,
+    customer_name text,
+    customer_email text,
+    customer_phone text,
+    receipt_url text,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT customer_stages_pkey PRIMARY KEY (id),
+    CONSTRAINT customer_stages_user_phone_key UNIQUE (user_id, phone_number)
+);
+
 CREATE TABLE public.conversations (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     phone_number text NOT NULL,
@@ -1468,6 +1485,17 @@ CREATE POLICY "Users can create own conversations" ON public.conversations FOR I
 
 
 --
+-- Name: customer_stages Users manage own customer stages; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users manage own customer stages" ON public.customer_stages FOR ALL USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+
+CREATE POLICY "Staff manage owner customer stages" ON public.customer_stages FOR ALL USING ((EXISTS ( SELECT 1 FROM public.staff_accounts WHERE ((staff_accounts.staff_user_id = auth.uid()) AND (staff_accounts.owner_id = customer_stages.user_id) AND (staff_accounts.is_active = true)) ))) WITH CHECK ((EXISTS ( SELECT 1 FROM public.staff_accounts WHERE ((staff_accounts.staff_user_id = auth.uid()) AND (staff_accounts.owner_id = customer_stages.user_id) AND (staff_accounts.is_active = true)) )));
+
+CREATE POLICY "Super admins view all customer stages" ON public.customer_stages FOR SELECT USING (public.has_role(auth.uid(), 'super_admin'::public.app_role));
+
+
+--
 -- Name: faqs Users can create own faqs; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1751,6 +1779,12 @@ ALTER TABLE public.contact_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: customer_stages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.customer_stages ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: faq_usage_logs; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1980,6 +2014,15 @@ GRANT ALL ON TABLE public.contact_usage TO service_role;
 GRANT ALL ON TABLE public.conversations TO anon;
 GRANT ALL ON TABLE public.conversations TO authenticated;
 GRANT ALL ON TABLE public.conversations TO service_role;
+
+
+--
+-- Name: TABLE customer_stages; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.customer_stages TO anon;
+GRANT ALL ON TABLE public.customer_stages TO authenticated;
+GRANT ALL ON TABLE public.customer_stages TO service_role;
 
 
 --

@@ -139,6 +139,190 @@ serve(async (req) => {
   });
 });
 
+const DEFAULT_SETS_CONFIG = {
+  enabled: true,
+  set1: {
+    enabled: true,
+    audio_url: "",
+    text1: "පාඨමාලා ගාස්තු ඇතුලු විස්තර දැනගන්න අවශ්යනම් Course Fee කියලා Message එකක්  එවන්න . ☺️🧡",
+    text2: "⭕ අපේ Alibaba Selling පාඨමාලව හැදැරූ සිසුන්ගේ Earning Proof සහ Student Feedbacks ගැන දැනගැනීමට පහත ලින්ක් එක ක්ලික් කරන්න.  👇\n\nfeedbacks.eexpertzacademy.com",
+    img1_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/9d71b992-cf2b-4dc0-9691-16216ce5138a.png",
+    img1_caption: "මාසෙන් රුපියල් ලක්ශ 43 ක් ! 🫵🧡\n\n🟠මේ තියෙන්නෙ අපි මාර්තු වල පටන් ගත්ත Alibaba Selling Business එකක ගිය මාසෙ (June) සේල් එක.  ඔයාට පේනවා ඇති අපි ගිය මාසෙ විතරක් රුපියල් ලක්ශ 43 කට ආසන්න සේල් එකක් කරලා තියෙනවා. ඒ වගේම Orders 2100 කට ආසන්න ප්රමාණයක් ඇවිල්ලා තියෙනවා. \n\n🟠මෙතන මේ ලක්ශ 43 ක සේල් එකෙන් අපිට රුපියල් ලක්ශ 20 කට වැඩි ලාභයක් තියෙනවා. දවස් 30 න්  රුපියල් ලක්ශ 20 ක් කියන්නෙ හිතාගන්නවත් බෑ නේද ?\n\n🟠 මෙච්චර අඩු කාලෙකින් මේ වගේ ආදයමක් ගන්න පුලුවන් එකම බිස්නස් එක තමයි Alibaba Selling කියලා කියන්නේ.\n\nමේවා තමා ඇත්තම ඔන්ලයින් බිස්නස් 💪🧡",
+    img2_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/a193b2b1-cdd9-4743-bf58-bef03c4cca5d.jpg"
+  },
+  set2: {
+    enabled: true,
+    img3_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/a5251727-f2ea-4de1-8472-e3641ec05e3a.jpg",
+    img3_caption: "✅සම්පූර්ණ කෝස් Fee එක රු.10 900 යි.නමුත් අද දින මෙම පාඨමාලාව මිලදී ගන්නා පලමු සිසුන් 25 දෙනාට මෙය රු.4900 කට මිලදී ගන්න පුලුවන්.\n\n✅පාඨමාලාව මිලදි ගන්න කැමතිද කියල අපිට හැකි ඉක්මනින් Message එකක් දාන්න.\n\nUpdate‼️\nදැනට අද දින 21 දෙනෙක් මෙය මිලදී අරගෙන ඇති නිසා මෙය ඉහත මිලට ලබා ගත හැක්කේ තවත් සිසුන් 4 දෙනෙකුට පමණි.",
+    audio1_url: "",
+    audio2_url: "",
+    img4_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/ceef0369-ab3f-4efd-b14e-4211cf30ceb0.jpg",
+    img4_caption: "Update‼️\nදැනට අද දින 22 දෙනෙක් මෙය මිලදී අරගෙන ඇති නිසා මෙය ඉහත මිලට ලබා ගත හැක්කේ තවත් සිසුන් 3 දෙනෙකුට පමණි.",
+    text_time_restricted: "මේක ඇත්තටම ඊයෙ අපි දීපු offer එකක් . ඒත් ඊයේ කෝස් එක ගත්තෙ 25 න් 21 ක් විතරයි . ඒක නිසා තව 4 දෙනෙක්ට අද අවස්තාව තියෙනව ඊයෙ offer price එකටම පාඨමාලව මිලදී ගන්න.",
+    cutoff_hour_sl: 14,
+    img5_url: "https://storage.buildstart.io/biz-7fd28dd0-11a4-43e7-988b-edbfdc994b25/sets/36878d8f-836b-48fa-b46a-7b8c4d5f8065.jpg",
+    img5_caption: "මේක ඊයේ End උන  Offer එකක්. ඒත්  අද  උදෑසන 10 ට පෙර පාඨමාලව මිලදී ගන්න අයටත් අපි මේ Offer එක ලබා දෙනව. ඒ කියන්නෙ අද රු.4900 ක් දීලා අපේ Alibaba Selling Master Course එක මිලදී ගන්නකොට තවත් පාඨමාලා දෙකක් ම නොමිලේ ලැබෙනවා. ☺️🧡🧡"
+  },
+  set3: {
+    enabled: true,
+    bank_details_text: "අද දින *Alibaba Selling Master Course*  එක මිලදි ගන්න අය පහත Bank Details  වලට *රු.4900 ක මුදලක් බැර* කර රිසිට්පතේ Photo එක්ක් සමග ඔබේ නම සහ Email එක 0779638667 යන අංකයට WhatsApp කරන්න.   👇\n\nBank - NDB Bank\nHolder Name - eExpertz\nAccount Number - *111000271906*\nBranch - Maharagama\n\nBank - Sampath Bank\nHolder Name- eExpertz\nAccount Number - *109214030103*\nBank Branch- Maharagama\n\nBank - BOC Bank\nHolder Name- eExpertz\nAccount Number - *95577622*\nBank Branch- Maharagama\n\n⭕ *Payment එක කරලා රිසිට් එක එව්වට පස්සෙ විනාඩි 10 ඇතුලත සම්පූර්ණ පාඨමාලාවම ලැබෙනවා.*",
+    urgency_text: "Update‼️\nදැනට අද දින 23 දෙනෙක් මෙය මිලදී අරගෙන ඇති නිසා මෙය ඉහත මිලට ලබා ගත හැක්කේ තවත් සිසුන් 2 දෙනෙකුට පමණි.",
+    confirmation_text: "Payment එක දාන්න පැය කිහිපයක් යනවනම් සල්ලි දාන්න කලින් Message  එකක් දාල තාම 25 දෙනා Fill වෙලා නැද්ද කියලා Confirm  කරගෙන Payment  එක දාන්න."
+  },
+  receipt_workflow: {
+    request_details_text: "ඔබගේ ගෙවීම් රිසිට්පත ලැබුණා. කරුණාකර ඔබගේ නම (Full Name), Email ලිපිනය සහ දුරකථන අංකය (Phone Number) මෙහි එවන්න. 📝",
+    onboarding_confirm_text: "ඔබගේ විස්තර ලැබුණා. ඔබගේ Payment එක තහවුරු කර පැය 1ක් (1 hour) ඇතුලත ඔබව පාඨමාලාවට සම්බන්ධ කරනු ලැබේ. ස්තූතියි! ☺️🧡"
+  },
+  pay_later_response: "හොඳයි, ඔබට පහසු වේලාවක අප හා සම්බන්ධ වන්න. ස්තූතියි! ☺️"
+};
+
+function isBeforeHourSriLanka(targetHour: number = 14): boolean {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const slTime = new Date(utc + (3600000 * 5.5));
+  return slTime.getHours() < targetHour;
+}
+
+function isPayLaterIntent(text: string): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  const patterns = [
+    /පස්සෙ.*(ගෙව|දා|ගන්|කිය|කර)/i,
+    /පස්සේ.*(ගෙව|දා|ගන්|කිය|කර)/i,
+    /ලබන.*(මාස|සතිය)/i,
+    /දවස්.*(දෙක|තුන|කීප)/i,
+    /(salary|සැලරි|පඩි|සල්ලි).*(හම්බ|ලැබු)/i,
+    /pay\s*later/i,
+    /will\s*pay\s*later/i,
+    /passe\s*(dannam|gewannam|gannam|kiyannam|karannam)/i,
+    /after\s*(salary|next\s*week|next\s*month|2\s*days|few\s*days)/i,
+    /not\s*now/i,
+    /දැනට\s*බැහැ/i,
+    /සල්ලි\s*නැහැ/i,
+  ];
+  return patterns.some(p => p.test(lower) || p.test(text));
+}
+
+function isCourseFeeOrPaymentIntent(text: string): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase().trim();
+  const patterns = [
+    // Course Fee & Price variations (English)
+    /course\s*fee/i,
+    /\bfee\b/i,
+    /\bfees\b/i,
+    /\bcost\b/i,
+    /\bprice\b/i,
+    /how\s*much/i,
+    /\bcharge\b/i,
+    /\brate\b/i,
+    /\bamount\b/i,
+    /discount/i,
+    /offer/i,
+    /4900/i,
+    /10900/i,
+    /10\s*900/i,
+    /4\s*900/i,
+
+    // Sinhala Unicode for Fee / Price
+    /ගාස්තු/i,
+    /මිල/i,
+    /කීයද/i,
+    /කීයක්/i,
+    /කීයක්ද/i,
+    /මුදල/i,
+    /අය\s*කරන/i,
+    /කොස්\s*ෆී/i,
+    /ෆී/i,
+    /ඩිස්කවුන්ට්/i,
+    /ඕෆර්/i,
+
+    // Singlish for Fee / Price
+    /keeyada/i,
+    /kiyada/i,
+    /gana\s*keeyada/i,
+    /mula\s*keeyada/i,
+    /mila\s*keeyada/i,
+    /gaana\s*keeyada/i,
+    /fee\s*eka/i,
+    /course\s*fee\s*eka/i,
+    /cost\s*eka/i,
+    /price\s*eka/i,
+    
+    // Payment & Bank Account variations (English)
+    /\bpay\b/i,
+    /\bpayment\b/i,
+    /payment\s*method/i,
+    /payment\s*methods/i,
+    /\bbank\b/i,
+    /\baccount\b/i,
+    /acc\s*no/i,
+    /account\s*no/i,
+    /account\s*number/i,
+    /bank\s*details/i,
+    /deposit/i,
+    /transfer/i,
+    /\bslip\b/i,
+    /\breceipt\b/i,
+    /\bndb\b/i,
+    /\bsampath\b/i,
+    /\bboc\b/i,
+    /\bcommercial\b/i,
+    /\bhnb\b/i,
+    /\bpeoples\b/i,
+    /\bbuy\b/i,
+    /\benroll\b/i,
+    /\bregister\b/i,
+    /\bjoin\b/i,
+    /how\s*to\s*pay/i,
+    /how\s*to\s*buy/i,
+    /how\s*to\s*join/i,
+
+    // Sinhala Unicode for Payment
+    /ගෙවන්න/i,
+    /ගෙවන්නම්/i,
+    /ගෙවන්නේ\s*කොහොමද/i,
+    /ගෙවීම්/i,
+    /බැංකු/i,
+    /ගිණුම්/i,
+    /අංක/i,
+    /බැංකුව/i,
+    /මිලදී\s*ගන්න/i,
+    /ගන්න\s*කැමති/i,
+    /සම්බන්ධ\s*වෙන්න/i,
+    /ලියාපදිංචි/i,
+
+    // Singlish for Payment
+    /gewanna/i,
+    /gewanne\s*kohomada/i,
+    /gewannam/i,
+    /gewanna\s*ona/i,
+    /ganna\s*ona/i,
+    /ganna\s*kamathi/i,
+    /join\s*wenna/i,
+    /register\s*wenna/i,
+    /salli\s*danna/i,
+    /salli\s*gewanna/i,
+    /bank\s*ekata/i,
+    /account\s*ekata/i,
+    /details\s*danna/i,
+    /details\s*ewanna/i,
+    /wisthara\s*ewanna/i,
+    /wisthara\s*danna/i
+  ];
+  return patterns.some(p => p.test(lower) || p.test(text));
+}
+
+function containsCustomerDetails(text: string): boolean {
+  if (!text) return false;
+  const hasEmail = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text);
+  const hasPhone = /(?:0|\+?94)[0-9]{8,10}/.test(text.replace(/[\s-]/g, ""));
+  const hasNameKeyword = /(name|නම|email|phone|දුරකථන|ලිපිනය)/i.test(text);
+  return (hasEmail && (hasPhone || hasNameKeyword)) || (hasPhone && hasNameKeyword) || (hasEmail && text.length > 15);
+}
+
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
 async function processMessage(
   supabase: any,
   supabaseUrl: string,
@@ -150,9 +334,8 @@ async function processMessage(
 ) {
   const { user_id: userId, phone_number: phoneNumber, sender_name: senderName, message_text: messageText, message_type: messageType, session_api_key: sessionApiKey, raw_payload: body } = msg;
 
-  // Check if this is a media message — if so, store it but do NOT reply
   const mediaTypes = ["image", "video", "audio", "document", "sticker", "ptt", "vcard", "location"];
-  const isMediaMessage = mediaTypes.includes(messageType) || 
+  const isMediaMessage = mediaTypes.includes(messageType) ||
     (!messageText && messageType !== "text") ||
     (body?.data?.messages?.messageBody === undefined && body?.data?.messages?.message?.conversation === undefined && !messageText);
 
@@ -160,7 +343,7 @@ async function processMessage(
   mark("store_inbound_start");
   const { error: insertError } = await supabase.from("conversations").insert({
     phone_number: phoneNumber,
-    message: messageText,
+    message: messageText || `[${messageType || "media"}]`,
     direction: "inbound",
     message_type: messageType,
     metadata: { senderName, event: body?.event, raw: body, correlationId: corrId },
@@ -173,7 +356,6 @@ async function processMessage(
   }
 
   // 1b. Contact billing: register this contact for the current cycle.
-  // Every first inbound message from a contact counts, regardless of whether the AI replies.
   const contactCheck = await registerContact(supabase, userId, phoneNumber, corrId);
   if (contactCheck.blocked) {
     console.log(`[${corrId}] New-contact limit reached for user ${userId}, not serving ${phoneNumber}`);
@@ -184,13 +366,6 @@ async function processMessage(
     supabase, supabaseUrl, supabaseServiceKey, userId, phoneNumber, senderName, sessionApiKey, corrId
   );
 
-
-  // Skip replying to media messages (images, PDFs, videos, etc.)
-  if (isMediaMessage) {
-    console.log(`[${corrId}] Media message (type: ${messageType}) from ${phoneNumber}, stored but not replying`);
-    return;
-  }
-
   // 2. Check if auto-responses are enabled
   mark("settings_start");
   const { data: settingsData } = await supabase
@@ -198,13 +373,12 @@ async function processMessage(
     .select("value")
     .eq("key", "auto_responses")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
   mark("settings_end");
 
   const autoResponsesEnabled = settingsData?.value?.enabled ?? true;
-
   if (!autoResponsesEnabled) {
-    console.log(`[${corrId}] Auto responses disabled, skipping AI processing`);
+    console.log(`[${corrId}] Auto responses disabled, skipping processing`);
     return;
   }
 
@@ -218,25 +392,339 @@ async function processMessage(
     .maybeSingle();
 
   if (takeoverData) {
-    console.log(`[${corrId}] Chat with ${phoneNumber} is taken over, skipping AI`);
+    console.log(`[${corrId}] Chat with ${phoneNumber} is taken over, skipping automation`);
     return;
   }
 
-  // 4. Check if first message (for welcome message flow)
-  const { count: convoCount } = await supabase
-    .from("conversations")
-    .select("id", { count: "exact", head: true })
+  // 4. Fetch Message Sets configuration
+  const { data: setsSetting } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "message_sets_config")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const cfg = { ...DEFAULT_SETS_CONFIG, ...(setsSetting?.value || {}) };
+
+  // 5. Fetch or initialize customer stage tracking
+  const { data: existingStage } = await supabase
+    .from("customer_stages")
+    .select("*")
+    .eq("user_id", userId)
     .eq("phone_number", phoneNumber)
-    .eq("user_id", userId);
+    .maybeSingle();
 
-  const isFirstMessage = (convoCount || 0) <= 1;
+  let currentStage = existingStage?.current_stage || "new";
+  let receivedSets: string[] = Array.isArray(existingStage?.received_sets) ? existingStage.received_sets : [];
 
-  if (isFirstMessage) {
-    const sent = await handleWelcomeMessage(supabase, supabaseUrl, supabaseServiceKey, userId, phoneNumber, messageText, sessionApiKey, corrId, timings, mark);
-    if (sent) return;
+  // Helper to update customer stage
+  const updateStage = async (stage: string, sets: string[], extraData: Record<string, any> = {}) => {
+    currentStage = stage;
+    receivedSets = sets;
+    await supabase.from("customer_stages").upsert({
+      user_id: userId,
+      phone_number: phoneNumber,
+      current_stage: stage,
+      received_sets: sets,
+      updated_at: new Date().toISOString(),
+      ...extraData,
+    }, { onConflict: "user_id,phone_number" });
+  };
+
+  // Helper to send text message
+  const sendTextMsg = async (text: string, metadata: Record<string, any> = {}) => {
+    if (!text?.trim()) return;
+    mark("send_start");
+    await sendWhatsApp(supabaseUrl, supabaseServiceKey, phoneNumber, text.trim(), null, sessionApiKey);
+    mark("send_end");
+    await supabase.from("conversations").insert({
+      phone_number: phoneNumber,
+      message: text.trim(),
+      direction: "outbound",
+      message_type: "text",
+      metadata: { ...metadata, correlationId: corrId },
+      user_id: userId,
+    });
+  };
+
+  // Helper to send media message
+  const sendMediaMsg = async (mediaUrl: string, caption?: string, mediaType?: string, metadata: Record<string, any> = {}) => {
+    if (!mediaUrl?.trim()) return;
+    mark("send_start");
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: phoneNumber,
+        mediaUrl: mediaUrl.trim(),
+        message: caption?.trim() || undefined,
+        mediaType: mediaType || undefined,
+        sessionApiKey,
+      }),
+    });
+    mark("send_end");
+
+    if (res.ok) {
+      await supabase.from("conversations").insert({
+        phone_number: phoneNumber,
+        message: caption?.trim() || `[Media: ${mediaUrl}]`,
+        direction: "outbound",
+        message_type: mediaType || "image",
+        metadata: { mediaUrl, ...metadata, correlationId: corrId },
+        user_id: userId,
+      });
+    } else {
+      console.error(`[${corrId}] Failed to send media:`, await res.text());
+    }
+  };
+
+  // -------------------------------------------------------------
+  // CUSTOMIZATION 3: PAYMENT RECEIPT HANDLING (IMAGE / PDF)
+  // -------------------------------------------------------------
+  if (messageType === "image" || messageType === "document" || isMediaMessage) {
+    console.log(`[${corrId}] Inbound receipt/media from ${phoneNumber}. Triggering detail collection.`);
+    const requestText = cfg.receipt_workflow?.request_details_text || DEFAULT_SETS_CONFIG.receipt_workflow.request_details_text;
+    await sendTextMsg(requestText, { type: "receipt_request_details" });
+    await updateStage("pending_verification", receivedSets, {
+      receipt_url: body?.mediaUrl || body?.payload?.mediaUrl || null,
+      metadata: { receipt_received_at: new Date().toISOString() },
+    });
+    return;
   }
 
-  // 5. Get conversation history
+  // -------------------------------------------------------------
+  // DETAILS INTAKE AFTER RECEIPT
+  // -------------------------------------------------------------
+  if (currentStage === "pending_verification" || currentStage === "receipt_pending" || containsCustomerDetails(messageText)) {
+    if (currentStage === "pending_verification" || currentStage === "receipt_pending") {
+      console.log(`[${corrId}] Customer sent details after receipt: ${messageText}`);
+      const confirmText = cfg.receipt_workflow?.onboarding_confirm_text || DEFAULT_SETS_CONFIG.receipt_workflow.onboarding_confirm_text;
+      await sendTextMsg(confirmText, { type: "receipt_confirm_onboarding" });
+
+      // Extract basic email / phone / name
+      const emailMatch = messageText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      const phoneMatch = messageText.match(/(?:0|\+?94)[0-9]{8,10}/);
+
+      // Attempt to extract name from message if provided (e.g. Name: Dulnith)
+      let extractedName = senderName || null;
+      const nameMatch = messageText.match(/(?:name|නම|nama)\s*[:=-]?\s*([a-zA-Z\s]{3,30})/i);
+      if (nameMatch && nameMatch[1]?.trim()) {
+        extractedName = nameMatch[1].trim();
+      }
+
+      await updateStage("pending_verification", receivedSets, {
+        customer_email: emailMatch ? emailMatch[0] : null,
+        customer_phone: phoneMatch ? phoneMatch[0] : phoneNumber,
+        customer_name: extractedName,
+        metadata: { details_submitted_at: new Date().toISOString(), raw_details: messageText },
+      });
+
+      // Also record order in database for eexperts tracking
+      await supabase.from("orders").insert({
+        customer_name: extractedName || "Alibaba Student",
+        customer_phone: phoneMatch ? phoneMatch[0] : phoneNumber,
+        whatsapp_phone: phoneNumber,
+        order_items: [{ name: "Alibaba Selling Master Course", price: 4900, quantity: 1, product_type: "digital" }],
+        payment_method: "bank_transfer",
+        total_amount: 4900,
+        special_instructions: `Email: ${emailMatch ? emailMatch[0] : "Pending"}\nDetails: ${messageText}`,
+        status: "pending",
+        user_id: userId,
+      });
+
+      return;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // CUSTOMIZATION 2: "PAY AT A LATER TIME" INTENT
+  // -------------------------------------------------------------
+  if (isPayLaterIntent(messageText)) {
+    console.log(`[${corrId}] Pay later intent detected from ${phoneNumber}. Ending automated sequence.`);
+    const payLaterReply = cfg.pay_later_response || DEFAULT_SETS_CONFIG.pay_later_response;
+    await sendTextMsg(payLaterReply, { type: "pay_later_closure" });
+    await updateStage("pay_later", receivedSets, {
+      metadata: { pay_later_requested_at: new Date().toISOString() },
+    });
+    // Add takeover to prevent future auto sends
+    await supabase.from("chat_takeovers").upsert({
+      user_id: userId,
+      phone_number: phoneNumber,
+      is_taken_over: true,
+    }, { onConflict: "user_id,phone_number" });
+    return;
+  }
+
+  // -------------------------------------------------------------
+  // AUTOMATED MESSAGE SETS (SET 1, SET 2, SET 3)
+  // -------------------------------------------------------------
+  const isFirstMessage = receivedSets.length === 0;
+
+  // Helper to dispatch dynamic items in sequence
+  const dispatchItemSequence = async (items: any[], setName: string) => {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.time_restricted) {
+        const cutoff = item.cutoff_hour_sl ?? 14;
+        if (!isBeforeHourSriLanka(cutoff)) {
+          console.log(`[${corrId}] Time restricted item ${item.name || item.id} skipped (SL time >= ${cutoff}:00)`);
+          continue;
+        }
+      }
+
+      if (item.type === "text" && item.text?.trim()) {
+        await sendTextMsg(item.text.trim(), { set: setName, step: i + 1, item_name: item.name });
+      } else if (item.type === "image" && item.media_url?.trim()) {
+        await sendMediaMsg(item.media_url.trim(), item.caption?.trim() || undefined, "image", { set: setName, step: i + 1, item_name: item.name });
+      } else if (item.type === "audio" && item.media_url?.trim()) {
+        await sendMediaMsg(item.media_url.trim(), undefined, "audio", { set: setName, step: i + 1, item_name: item.name });
+      } else if (item.type === "video" && item.media_url?.trim()) {
+        await sendMediaMsg(item.media_url.trim(), item.caption?.trim() || undefined, "video", { set: setName, step: i + 1, item_name: item.name });
+      } else if (item.type === "document" && item.media_url?.trim()) {
+        await sendMediaMsg(item.media_url.trim(), item.caption?.trim() || undefined, "document", { set: setName, step: i + 1, item_name: item.name });
+      }
+
+      if (i < items.length - 1) {
+        await delay(1200);
+      }
+    }
+  };
+
+  // SET 1: Sent automatically on first contact / initial inquiry
+  if (!receivedSets.includes("set1") && !cfg.set1?.removed && (cfg.set1?.enabled ?? true)) {
+    console.log(`[${corrId}] Dispatching Set 1 messages to ${phoneNumber}`);
+    const s1 = cfg.set1 || DEFAULT_SETS_CONFIG.set1;
+
+    if (s1.items && Array.isArray(s1.items) && s1.items.length > 0) {
+      await dispatchItemSequence(s1.items, "set1");
+    } else {
+      // Legacy fallback
+      if (s1.audio_url) {
+        await sendMediaMsg(s1.audio_url, undefined, "audio", { set: "set1", step: 1 });
+        await delay(1200);
+      }
+      if (s1.text1) {
+        await sendTextMsg(s1.text1, { set: "set1", step: 2 });
+        await delay(1200);
+      }
+      if (s1.text2) {
+        await sendTextMsg(s1.text2, { set: "set1", step: 3 });
+        await delay(1200);
+      }
+      if (s1.img1_url) {
+        await sendMediaMsg(s1.img1_url, s1.img1_caption, "image", { set: "set1", step: 4 });
+        await delay(1200);
+      }
+      if (s1.img2_url) {
+        await sendMediaMsg(s1.img2_url, undefined, "image", { set: "set1", step: 5 });
+      }
+    }
+
+    await updateStage("set1", ["set1"]);
+    return;
+  }
+
+  // SET 2: Triggered on ANY message from the user after Set 1 has been sent
+  if (receivedSets.includes("set1") && !receivedSets.includes("set2") && !cfg.set2?.removed && (cfg.set2?.enabled ?? true)) {
+    console.log(`[${corrId}] Dispatching Set 2 (Discounts) messages to ${phoneNumber}`);
+    const s2 = cfg.set2 || DEFAULT_SETS_CONFIG.set2;
+
+    if (s2.items && Array.isArray(s2.items) && s2.items.length > 0) {
+      await dispatchItemSequence(s2.items, "set2");
+    } else {
+      // Legacy fallback
+      if (s2.img3_url) {
+        await sendMediaMsg(s2.img3_url, s2.img3_caption, "image", { set: "set2", step: 1 });
+        await delay(1200);
+      }
+      if (s2.audio1_url) {
+        await sendMediaMsg(s2.audio1_url, undefined, "audio", { set: "set2", step: 2 });
+        await delay(1200);
+      }
+      if (s2.audio2_url) {
+        await sendMediaMsg(s2.audio2_url, undefined, "audio", { set: "set2", step: 3 });
+        await delay(1200);
+      }
+      if (s2.img4_url) {
+        await sendMediaMsg(s2.img4_url, s2.img4_caption, "image", { set: "set2", step: 4 });
+        await delay(1200);
+      }
+      const cutoffHour = s2.cutoff_hour_sl ?? 14;
+      if (s2.text_time_restricted && isBeforeHourSriLanka(cutoffHour)) {
+        await sendTextMsg(s2.text_time_restricted, { set: "set2", step: 5, time_restricted: true });
+        await delay(1200);
+      }
+      if (s2.img5_url) {
+        await sendMediaMsg(s2.img5_url, s2.img5_caption, "image", { set: "set2", step: 6 });
+      }
+    }
+
+    await updateStage("set2", ["set1", "set2"]);
+    return;
+  }
+
+  // SET 3: Triggered ONLY if user asks for Course Fee or Payment Method (all variations)
+  if (!receivedSets.includes("set3") && !cfg.set3?.removed && (cfg.set3?.enabled ?? true) && isCourseFeeOrPaymentIntent(messageText)) {
+    console.log(`[${corrId}] Dispatching Set 3 (Payment Details) messages to ${phoneNumber}`);
+    const s3 = cfg.set3 || DEFAULT_SETS_CONFIG.set3;
+
+    if (s3.items && Array.isArray(s3.items) && s3.items.length > 0) {
+      await dispatchItemSequence(s3.items, "set3");
+    } else {
+      // Legacy fallback
+      if (s3.bank_details_text) {
+        await sendTextMsg(s3.bank_details_text, { set: "set3", step: 1 });
+        await delay(1200);
+      }
+      if (s3.urgency_text) {
+        await sendTextMsg(s3.urgency_text, { set: "set3", step: 2 });
+        await delay(1200);
+      }
+      if (s3.confirmation_text) {
+        await sendTextMsg(s3.confirmation_text, { set: "set3", step: 3 });
+      }
+    }
+
+    const nextSets = Array.from(new Set([...receivedSets, "set3"]));
+    await updateStage("set3", nextSets);
+    return;
+  }
+
+  // -------------------------------------------------------------
+  // DYNAMIC CUSTOM MESSAGE SETS (Triggered by custom keywords)
+  // -------------------------------------------------------------
+  if (cfg.custom_sets && Array.isArray(cfg.custom_sets)) {
+    for (const cSet of cfg.custom_sets) {
+      if (!cSet.enabled) continue;
+      const keywords = cSet.trigger_keywords || [];
+      const matches = keywords.some((kw: string) => kw && messageText.toLowerCase().includes(kw.toLowerCase()));
+      if (matches) {
+        console.log(`[${corrId}] Dispatching Custom Set: ${cSet.name} (${cSet.id}) to ${phoneNumber}`);
+        for (const item of (cSet.items || [])) {
+          if (item.type === "text" && item.content) {
+            await sendTextMsg(item.content, { custom_set: cSet.id, custom_set_name: cSet.name });
+            await delay(1200);
+          } else if ((item.type === "image" || item.type === "audio") && item.mediaUrl) {
+            await sendMediaMsg(item.mediaUrl, item.content, item.type, { custom_set: cSet.id, custom_set_name: cSet.name });
+            await delay(1200);
+          }
+        }
+        const nextSets = Array.from(new Set([...receivedSets, cSet.id]));
+        await updateStage(cSet.id, nextSets);
+        return;
+      }
+    }
+  }
+
+  // -------------------------------------------------------------
+  // BACKUP / FALLBACK: AI CHAT (AFTER ALL SETS ARE DISPATCHED)
+  // -------------------------------------------------------------
+  console.log(`[${corrId}] All sets completed or general query. Calling fallback AI chat.`);
+
+  // Get conversation history
   mark("history_start");
   const { data: conversationHistory } = await supabase
     .from("conversations")
@@ -247,10 +735,9 @@ async function processMessage(
     .limit(10);
   mark("history_end");
 
-  // 6. Call AI chat with timeout
   mark("ai_start");
   const controller = new AbortController();
-  const aiTimeout = setTimeout(() => controller.abort(), 55_000); // 55s timeout (edge function limit ~60s)
+  const aiTimeout = setTimeout(() => controller.abort(), 55_000);
 
   let aiResponse: Response;
   try {
@@ -284,23 +771,10 @@ async function processMessage(
   const aiData = await aiResponse.json();
 
   if (!aiResponse.ok) {
-    // Handle limit/paused fallback messages
     if ((aiResponse.status === 429 || aiResponse.status === 403) && aiData.response) {
-      console.log(`[${corrId}] AI limit/paused (${aiResponse.status}), sending fallback`);
-      await supabase.from("conversations").insert({
-        phone_number: phoneNumber,
-        message: aiData.response,
-        direction: "outbound",
-        message_type: "text",
-        user_id: userId,
-      });
-
-      mark("send_start");
-      await sendWhatsApp(supabaseUrl, supabaseServiceKey, phoneNumber, aiData.response, null, sessionApiKey);
-      mark("send_end");
+      await sendTextMsg(aiData.response, { type: "ai_fallback_limit" });
       return;
     }
-
     console.error(`[${corrId}] AI chat error:`, JSON.stringify(aiData));
     throw new Error("AI processing failed");
   }
@@ -310,57 +784,22 @@ async function processMessage(
   const replyVideoUrl = aiData.videoUrl || null;
   const followupMessage = aiData.followupMessage || null;
   const faqMedia: string[] = Array.isArray(aiData.faqMedia) ? aiData.faqMedia : [];
-  console.log(`[${corrId}] AI reply: ${replyMessage?.substring(0, 100)}${replyImageUrl ? " (with image)" : ""}${replyVideoUrl ? " (with video)" : ""}${followupMessage ? " (with followup)" : ""}`);
 
-  // 7. Store outgoing message
-  mark("store_outbound_start");
-  await supabase.from("conversations").insert({
-    phone_number: phoneNumber,
-    message: replyMessage,
-    direction: "outbound",
-    message_type: replyImageUrl ? "image" : "text",
-    metadata: { correlationId: corrId, ...(faqMedia.length > 0 ? { faqMedia } : {}) },
-    user_id: userId,
-  });
-  mark("store_outbound_end");
-
-  // 8. Send reply via WhatsApp: video first, then images, then text
-  mark("send_start");
-
-  // Send video first if present
   if (replyVideoUrl) {
     await sendWhatsAppMedia(supabaseUrl, supabaseServiceKey, phoneNumber, replyVideoUrl, sessionApiKey);
   }
-
-  // Send image(s) next if present
   if (replyImageUrl) {
     await sendWhatsAppMedia(supabaseUrl, supabaseServiceKey, phoneNumber, replyImageUrl, sessionApiKey);
   }
-
-  // Send FAQ attachments (images / videos / PDFs) with no caption, before the text reply
   for (const url of faqMedia) {
     await sendWhatsAppMedia(supabaseUrl, supabaseServiceKey, phoneNumber, url, sessionApiKey);
   }
-
-  // Send text message last
-  await sendWhatsApp(supabaseUrl, supabaseServiceKey, phoneNumber, replyMessage, null, sessionApiKey);
-
-  // Send order follow-up message if present
-  if (followupMessage) {
-    console.log(`[${corrId}] Sending order follow-up message`);
-    await sendWhatsApp(supabaseUrl, supabaseServiceKey, phoneNumber, followupMessage, null, sessionApiKey);
-    // Store follow-up in conversation history
-    await supabase.from("conversations").insert({
-      phone_number: phoneNumber,
-      message: followupMessage,
-      direction: "outbound",
-      message_type: "text",
-      metadata: { type: "order_followup", correlationId: corrId },
-      user_id: userId,
-    });
+  if (replyMessage) {
+    await sendTextMsg(replyMessage, { type: "ai_reply", ...(faqMedia.length > 0 ? { faqMedia } : {}) });
   }
-
-  mark("send_end");
+  if (followupMessage) {
+    await sendTextMsg(followupMessage, { type: "order_followup" });
+  }
 }
 
 async function handleWelcomeMessage(

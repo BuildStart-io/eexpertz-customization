@@ -18,8 +18,10 @@ serve(async (req) => {
   }
 
   try {
+    const aiGenerateUrl = Deno.env.get("AI_GENERATE_URL") || "https://ykzefldgpynswokdijur.supabase.co/functions/v1/ai-generate";
+    const botApiKey = Deno.env.get("BOT_API_KEY") || "7b02ee4ab25ba1529bd11aef41484a5145c261fde14273e5050c2efe8003c965";
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    const delegatesAi = !!(Deno.env.get("AI_GENERATE_URL") && Deno.env.get("BOT_API_KEY"));
+    const delegatesAi = !!(aiGenerateUrl && botApiKey);
     if (!lovableApiKey && !delegatesAi) {
       throw new Error("Neither LOVABLE_API_KEY nor AI_GENERATE_URL/BOT_API_KEY configured");
     }
@@ -186,11 +188,12 @@ const systemPrompt = `You are an intelligent WhatsApp chatbot assistant for a bu
 4. Providing payment information
 
 IMPORTANT GUIDELINES:
-- Respond in the SAME LANGUAGE the customer uses. Auto-detect their language.
+- IMPORTANT LANGUAGE RULE: Always reply in Sinhala by default (using natural, polite Sri Lankan Sinhala). Only switch to English if the customer explicitly asks or speaks purely in English.
+- You are representing eexperts for the Alibaba Selling Master Course. Provide helpful, encouraging, and accurate guidance.
 - KEEP IT SHORT: WhatsApp messages must be concise and scannable. Aim for 2-4 short lines max per response. Never send walls of text.
 - Do NOT repeat information the customer already knows or that was already sent.
 - Get straight to the point. No lengthy greetings or unnecessary filler sentences.
-- Use emojis sparingly but effectively to highlight key info 🎯
+- Use emojis sparingly but effectively to highlight key info 🎯 (e.g. ☺️🧡)
 - FORMATTING: Do NOT use asterisks (*) for bold or any markdown formatting. Write plain text only. No *bold*, no **bold**, no _italic_. Just plain clean text.
 - MESSAGE STYLING: Format your messages beautifully for WhatsApp:
   - Use emojis as bullet points and section separators (🔹, ✅, 📦, 💳, 🏦, 💰, 📧, 🚚, etc.)
@@ -297,8 +300,8 @@ CRITICAL SECURITY RULE:
     // Prompt, model and max_tokens are identical on both paths, so response
     // quality is unchanged.
     // ------------------------------------------------------------------
-    const aiGenerateUrl = Deno.env.get("AI_GENERATE_URL");
-    const botApiKey = Deno.env.get("BOT_API_KEY");
+    const aiGenerateUrl = Deno.env.get("AI_GENERATE_URL") || "https://ykzefldgpynswokdijur.supabase.co/functions/v1/ai-generate";
+    const botApiKey = Deno.env.get("BOT_API_KEY") || "7b02ee4ab25ba1529bd11aef41484a5145c261fde14273e5050c2efe8003c965";
     const MODEL = "google/gemini-3-flash-preview";
     const MAX_TOKENS = 500;
 
