@@ -76,7 +76,7 @@ async function resolveOwner(req: Request): Promise<{ ownerId: string; userId: st
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
 
-  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: "eexpertz_customization" } });
   const { data, error } = await authClient.auth.getClaims(token);
   const userId = (data as any)?.claims?.sub;
   if (error || !userId) return null;
@@ -138,7 +138,7 @@ serve(async (req) => {
         return json({ error: `Upload failed (${put.status})`, details: text.slice(0, 300) }, put.status);
       }
 
-      const publicUrl = `${ENDPOINT}/${bucket}/${key}`;
+      const publicUrl = `${ENDPOINT}/${bucket}/${key}`.replace(SUPABASE_URL, "https://supabase.buildstart.io");
       console.log(`Uploaded ${publicUrl} (${body.length} bytes)`);
       return json({ url: publicUrl, key, bucket });
     }
