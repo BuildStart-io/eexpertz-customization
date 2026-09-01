@@ -247,6 +247,9 @@ export default function Conversations() {
       await (supabase.from("chat_takeovers" as any) as any)
         .delete()
         .eq("phone_number", phoneNumber);
+      await (supabase.from("customer_stages" as any) as any)
+        .delete()
+        .eq("phone_number", phoneNumber);
       if (selectedPhone === phoneNumber) {
         setSelectedPhone(null);
         setMessages([]);
