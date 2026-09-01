@@ -666,8 +666,8 @@ async function processMessage(
     return;
   }
 
-  // SET 3: Triggered ONLY if user asks for Course Fee or Payment Method (all variations)
-  if (!receivedSets.includes("set3") && !cfg.set3?.removed && (cfg.set3?.enabled ?? true) && isCourseFeeOrPaymentIntent(messageText)) {
+  // SET 3: Triggered on the 3rd message from the user after Set 2 has been sent
+  if (receivedSets.includes("set2") && !receivedSets.includes("set3") && !cfg.set3?.removed && (cfg.set3?.enabled ?? true)) {
     console.log(`[${corrId}] Dispatching Set 3 (Payment Details) messages to ${phoneNumber}`);
     const s3 = cfg.set3 || DEFAULT_SETS_CONFIG.set3;
 
