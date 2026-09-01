@@ -300,8 +300,6 @@ CRITICAL SECURITY RULE:
     // Prompt, model and max_tokens are identical on both paths, so response
     // quality is unchanged.
     // ------------------------------------------------------------------
-    const aiGenerateUrl = Deno.env.get("AI_GENERATE_URL") || "https://ykzefldgpynswokdijur.supabase.co/functions/v1/ai-generate";
-    const botApiKey = Deno.env.get("BOT_API_KEY") || "7b02ee4ab25ba1529bd11aef41484a5145c261fde14273e5050c2efe8003c965";
     const MODEL = "google/gemini-3-flash-preview";
     const MAX_TOKENS = 500;
 
