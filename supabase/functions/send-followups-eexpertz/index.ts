@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
         .select("plan_tier, is_paused, is_active")
         .eq("user_id", userId)
         .maybeSingle();
-      if (!profile || profile.plan_tier !== "enterprise" || profile.is_paused || profile.is_active === false) continue;
+      if (!profile || profile.is_paused || profile.is_active === false) continue;
 
       // 3. Session to send from
       const { data: session } = await supabase
