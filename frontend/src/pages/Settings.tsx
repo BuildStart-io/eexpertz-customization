@@ -129,6 +129,10 @@ export default function Settings() {
   const [inactivityFollowupMessage, setInactivityFollowupMessage] = useState("");
   const [inactivityFollowupHours, setInactivityFollowupHours] = useState<string>("24");
 
+  // First Message Keyword Feature
+  const [firstMessageKeywordEnabled, setFirstMessageKeywordEnabled] = useState(false);
+  const [firstMessageKeywords, setFirstMessageKeywords] = useState<string[]>([]);
+
   // Message Sets & Automation
   const [messageSetsConfig, setMessageSetsConfig] = useState<MessageSetsConfig>(defaultMessageSetsConfig);
 
@@ -227,6 +231,12 @@ export default function Settings() {
             setInactivityFollowupMessage(iVal?.text || "");
             setInactivityFollowupEnabled(iVal?.enabled ?? false);
             setInactivityFollowupHours(String(iVal?.hours ?? 24));
+            break;
+          }
+          case "first_message_keyword_config": {
+            const kwVal = setting.value as any;
+            setFirstMessageKeywordEnabled(kwVal?.enabled ?? false);
+            setFirstMessageKeywords(kwVal?.keywords || []);
             break;
           }
           case "message_sets_config": {
@@ -630,6 +640,13 @@ export default function Settings() {
     });
   };
 
+  const handleSaveFirstMessageKeyword = () => {
+    saveSettings("first_message_keyword_config", {
+      enabled: firstMessageKeywordEnabled,
+      keywords: firstMessageKeywords
+    });
+  };
+
   const copyWebhookUrl = async () => {
     await navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
@@ -680,6 +697,7 @@ export default function Settings() {
             <TabsTrigger value="payment" className="flex-1 sm:flex-initial">Payment</TabsTrigger>
             <TabsTrigger value="delivery" className="flex-1 sm:flex-initial">Delivery</TabsTrigger>
             <TabsTrigger value="staff" className="flex-1 sm:flex-initial">Staff</TabsTrigger>
+            <TabsTrigger value="keywords" className="flex-1 sm:flex-initial">Keywords</TabsTrigger>
           </TabsList>
 
           {/* WhatsApp Connection Tab */}
@@ -1192,6 +1210,89 @@ export default function Settings() {
 
           <TabsContent value="staff" className="space-y-6">
             <StaffManager />
+          </TabsContent>
+
+          {/* Keywords Tab */}
+          <TabsContent value="keywords" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      First Message Keywords
+                    </CardTitle>
+                    <CardDescription>
+                      Only reply to completely new contacts if their very first message matches these exact keywords.
+                    </CardDescription>
+                  </div>
+                  <Switch
+                    checked={firstMessageKeywordEnabled}
+                    onCheckedChange={setFirstMessageKeywordEnabled}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {firstMessageKeywordEnabled ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Target Keywords (Case-insensitive)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="new-keyword"
+                          placeholder="e.g. hello, send me details"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const val = e.currentTarget.value.trim();
+                              if (val && !firstMessageKeywords.includes(val)) {
+                                setFirstMessageKeywords([...firstMessageKeywords, val]);
+                                e.currentTarget.value = "";
+                              }
+                            }
+                          }}
+                        />
+                        <Button 
+                          onClick={() => {
+                            const input = document.getElementById("new-keyword") as HTMLInputElement;
+                            const val = input?.value.trim();
+                            if (val && !firstMessageKeywords.includes(val)) {
+                              setFirstMessageKeywords([...firstMessageKeywords, val]);
+                              input.value = "";
+                            }
+                          }}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {firstMessageKeywords.map((kw, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full text-sm">
+                            <span>{kw}</span>
+                            <button
+                              type="button"
+                              onClick={() => setFirstMessageKeywords(firstMessageKeywords.filter((_, i) => i !== idx))}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-md">
+                    Keyword filtering is disabled. The bot will respond to all new incoming messages normally.
+                  </p>
+                )}
+                <div className="pt-2">
+                  <Button onClick={handleSaveFirstMessageKeyword} disabled={saving}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save Keywords
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
         </Tabs>

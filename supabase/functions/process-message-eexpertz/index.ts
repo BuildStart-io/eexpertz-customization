@@ -339,6 +339,35 @@ async function processMessage(
     (!messageText && messageType !== "text") ||
     (body?.data?.messages?.messageBody === undefined && body?.data?.messages?.message?.conversation === undefined && !messageText);
 
+  // 0. Keyword Gatekeeper (only for first messages)
+  mark("keyword_check_start");
+  const { data: keywordConfig } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "first_message_keyword_config")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (keywordConfig?.value?.enabled) {
+    const { count } = await supabase
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("phone_number", phoneNumber);
+
+    if (count === 0) {
+      const keywords = keywordConfig.value.keywords || [];
+      const cleanMsg = (messageText || "").trim().toLowerCase();
+      const isMatch = keywords.some((kw: string) => kw.trim().toLowerCase() === cleanMsg);
+
+      if (!isMatch) {
+        console.log(`[${corrId}] Keyword mismatch for first message from ${phoneNumber}. Ignoring message completely.`);
+        return;
+      }
+    }
+  }
+  mark("keyword_check_end");
+
   // 1. Store the incoming message in conversations
   mark("store_inbound_start");
   const { error: insertError } = await supabase.from("conversations").insert({
