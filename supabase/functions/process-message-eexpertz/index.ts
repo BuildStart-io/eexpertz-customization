@@ -597,6 +597,7 @@ async function processMessage(
   if (!receivedSets.includes("set1") && !cfg.set1?.removed && (cfg.set1?.enabled ?? true)) {
     console.log(`[${corrId}] Dispatching Set 1 messages to ${phoneNumber}`);
     const s1 = cfg.set1 || DEFAULT_SETS_CONFIG.set1;
+    if (s1.delay_seconds) await delay(s1.delay_seconds * 1000);
 
     if (s1.items && Array.isArray(s1.items) && s1.items.length > 0) {
       await dispatchItemSequence(s1.items, "set1");
@@ -631,6 +632,7 @@ async function processMessage(
   if (receivedSets.includes("set1") && !receivedSets.includes("set2") && !cfg.set2?.removed && (cfg.set2?.enabled ?? true)) {
     console.log(`[${corrId}] Dispatching Set 2 (Discounts) messages to ${phoneNumber}`);
     const s2 = cfg.set2 || DEFAULT_SETS_CONFIG.set2;
+    if (s2.delay_seconds) await delay(s2.delay_seconds * 1000);
 
     if (s2.items && Array.isArray(s2.items) && s2.items.length > 0) {
       await dispatchItemSequence(s2.items, "set2");
@@ -670,6 +672,7 @@ async function processMessage(
   if (receivedSets.includes("set2") && !receivedSets.includes("set3") && !cfg.set3?.removed && (cfg.set3?.enabled ?? true)) {
     console.log(`[${corrId}] Dispatching Set 3 (Payment Details) messages to ${phoneNumber}`);
     const s3 = cfg.set3 || DEFAULT_SETS_CONFIG.set3;
+    if (s3.delay_seconds) await delay(s3.delay_seconds * 1000);
 
     if (s3.items && Array.isArray(s3.items) && s3.items.length > 0) {
       await dispatchItemSequence(s3.items, "set3");
@@ -703,6 +706,8 @@ async function processMessage(
       const matches = keywords.some((kw: string) => kw && messageText.toLowerCase().includes(kw.toLowerCase()));
       if (matches) {
         console.log(`[${corrId}] Dispatching Custom Set: ${cSet.name} (${cSet.id}) to ${phoneNumber}`);
+        if (cSet.delay_seconds) await delay(cSet.delay_seconds * 1000);
+        
         for (const item of (cSet.items || [])) {
           if (item.type === "text" && item.content) {
             await sendTextMsg(item.content, { custom_set: cSet.id, custom_set_name: cSet.name });

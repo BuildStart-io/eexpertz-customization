@@ -18,7 +18,7 @@ import {
 import { 
   Loader2, Upload, Trash2, Image as ImageIcon, Music, 
   Plus, MessageSquare, RotateCcw, Video, FileText, ArrowUp, ArrowDown,
-  Layers
+  Layers, Clock
 } from "lucide-react";
 
 export interface SetMessageItem {
@@ -36,6 +36,7 @@ export interface CustomSet {
   id: string;
   name: string;
   enabled: boolean;
+  delay_seconds?: number;
   trigger_keywords: string[];
   items: SetMessageItem[];
 }
@@ -44,6 +45,7 @@ export interface MessageSetsConfig {
   enabled: boolean;
   set1: {
     enabled: boolean;
+    delay_seconds?: number;
     name?: string;
     removed?: boolean;
     items?: SetMessageItem[];
@@ -56,6 +58,7 @@ export interface MessageSetsConfig {
   };
   set2: {
     enabled: boolean;
+    delay_seconds?: number;
     name?: string;
     removed?: boolean;
     items?: SetMessageItem[];
@@ -72,6 +75,7 @@ export interface MessageSetsConfig {
   };
   set3: {
     enabled: boolean;
+    delay_seconds?: number;
     name?: string;
     removed?: boolean;
     items?: SetMessageItem[];
@@ -918,6 +922,25 @@ export default function MessageSetsManager({ config, onChange }: MessageSetsMana
                   />
                 </div>
                 <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 border-r pr-3">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={normalizedConfig.set1?.delay_seconds ?? 0}
+                      onChange={(e) =>
+                        onChange({
+                          ...normalizedConfig,
+                          set1: { ...normalizedConfig.set1, delay_seconds: parseInt(e.target.value) || 0 },
+                        })
+                      }
+                      className="h-8 w-16 text-xs text-center font-mono"
+                      title="Delay in seconds before sending this set"
+                    />
+                    <span className="text-[10px] text-muted-foreground leading-tight hidden sm:block">
+                      Sec<br/>Delay
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Label htmlFor="set1_enabled" className="text-xs font-medium cursor-pointer">
                       Enabled
@@ -977,6 +1000,25 @@ export default function MessageSetsManager({ config, onChange }: MessageSetsMana
                   />
                 </div>
                 <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 border-r pr-3">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={normalizedConfig.set2?.delay_seconds ?? 0}
+                      onChange={(e) =>
+                        onChange({
+                          ...normalizedConfig,
+                          set2: { ...normalizedConfig.set2, delay_seconds: parseInt(e.target.value) || 0 },
+                        })
+                      }
+                      className="h-8 w-16 text-xs text-center font-mono"
+                      title="Delay in seconds before sending this set"
+                    />
+                    <span className="text-[10px] text-muted-foreground leading-tight hidden sm:block">
+                      Sec<br/>Delay
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Label htmlFor="set2_enabled" className="text-xs font-medium cursor-pointer">
                       Enabled
@@ -1036,6 +1078,25 @@ export default function MessageSetsManager({ config, onChange }: MessageSetsMana
                   />
                 </div>
                 <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 border-r pr-3">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={normalizedConfig.set3?.delay_seconds ?? 0}
+                      onChange={(e) =>
+                        onChange({
+                          ...normalizedConfig,
+                          set3: { ...normalizedConfig.set3, delay_seconds: parseInt(e.target.value) || 0 },
+                        })
+                      }
+                      className="h-8 w-16 text-xs text-center font-mono"
+                      title="Delay in seconds before sending this set"
+                    />
+                    <span className="text-[10px] text-muted-foreground leading-tight hidden sm:block">
+                      Sec<br/>Delay
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Label htmlFor="set3_enabled" className="text-xs font-medium cursor-pointer">
                       Enabled
@@ -1096,6 +1157,25 @@ export default function MessageSetsManager({ config, onChange }: MessageSetsMana
                     />
                   </div>
                   <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 border-r pr-3">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        min={0}
+                        value={cSet.delay_seconds ?? 0}
+                        onChange={(e) => {
+                          const updated = (normalizedConfig.custom_sets || []).map((cs) =>
+                            cs.id === cSet.id ? { ...cs, delay_seconds: parseInt(e.target.value) || 0 } : cs
+                          );
+                          onChange({ ...normalizedConfig, custom_sets: updated });
+                        }}
+                        className="h-8 w-16 text-xs text-center font-mono"
+                        title="Delay in seconds before sending this set"
+                      />
+                      <span className="text-[10px] text-muted-foreground leading-tight hidden sm:block">
+                        Sec<br/>Delay
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <Label htmlFor={`custom_en_${cSet.id}`} className="text-xs font-medium cursor-pointer">
                         Enabled
