@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     // 1. Users that have the inactivity follow-up configured
     const { data: settingsRows, error: sErr } = await supabase
       .from("settings")
-      .select("user_id, value")
+      .select("user_id, value, updated_at")
       .eq("key", "inactivity_followup");
 
     if (sErr) throw sErr;
@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
       if (!Number.isFinite(hours) || hours <= 0) continue;
 
       const userId = row.user_id as string;
+      const enabledAtTime = row.updated_at ? new Date(row.updated_at.replace(" ", "T")).getTime() : 0;
 
       // 2. Growth plan only
       const { data: profile } = await supabase
@@ -104,6 +105,7 @@ Deno.serve(async (req) => {
         if (entry.followupAfter) continue; // already followed up since their last message
         const lastInboundTime = new Date(entry.lastInbound.replace(" ", "T")).getTime();
         if (isNaN(lastInboundTime) || lastInboundTime > cutoffTime) continue; // not idle long enough
+        if (lastInboundTime < enabledAtTime) continue; // ignore backlog from before the feature was enabled
         eligibleEntries.push({ key, entry });
       }
 
