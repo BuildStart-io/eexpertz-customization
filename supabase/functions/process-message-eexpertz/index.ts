@@ -977,11 +977,20 @@ export function cycleStart(billingCycleStart: string | null | undefined): string
     return d.toISOString();
   }
   const now = new Date();
-  const current = new Date(billingCycleStart);
+  let current = new Date(billingCycleStart);
+  if (isNaN(current.getTime())) {
+    current = new Date(billingCycleStart.replace(" ", "T"));
+  }
+  if (isNaN(current.getTime())) {
+    current = new Date();
+    current.setDate(1);
+    current.setHours(0, 0, 0, 0);
+  }
+  let loops = 0;
   while (true) {
     const next = new Date(current);
     next.setMonth(next.getMonth() + 1);
-    if (next > now) break;
+    if (next > now || loops++ > 240) break;
     current.setTime(next.getTime());
   }
   return current.toISOString();

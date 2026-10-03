@@ -102,7 +102,8 @@ Deno.serve(async (req) => {
       for (const [key, entry] of perContact) {
         if (!entry.lastInbound) continue;
         if (entry.followupAfter) continue; // already followed up since their last message
-        if (new Date(entry.lastInbound).getTime() > cutoffTime) continue; // not idle long enough
+        const lastInboundTime = new Date(entry.lastInbound.replace(" ", "T")).getTime();
+        if (isNaN(lastInboundTime) || lastInboundTime > cutoffTime) continue; // not idle long enough
         eligibleEntries.push({ key, entry });
       }
 

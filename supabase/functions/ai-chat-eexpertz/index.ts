@@ -62,13 +62,22 @@ serve(async (req) => {
     const billingStart = profileRes.data?.billing_cycle_start;
     let monthStart: string;
     if (billingStart) {
-      const start = new Date(billingStart);
+      let start = new Date(billingStart);
+      if (isNaN(start.getTime())) {
+        start = new Date(billingStart.replace(" ", "T"));
+      }
+      if (isNaN(start.getTime())) {
+        start = new Date();
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+      }
       const now = new Date();
       const current = new Date(start);
+      let loops = 0;
       while (true) {
         const next = new Date(current);
         next.setMonth(next.getMonth() + 1);
-        if (next > now) break;
+        if (next > now || loops++ > 240) break;
         current.setMonth(current.getMonth() + 1);
       }
       monthStart = current.toISOString();

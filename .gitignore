@@ -4,4 +4,4 @@ dist/
 .DS_Store
 *.log
 .gemini/
-docker/volumes/db/data
+docker/volumes/db/data*.exp
