@@ -65,7 +65,8 @@ Deno.serve(async (req) => {
         .select("phone_number, direction, created_at, metadata")
         .eq("user_id", userId)
         .gte("created_at", windowStart)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false }) // NEWEST FIRST
+        .limit(3000); // increase limit just to be safe
 
       if (!convs?.length) continue;
 
@@ -79,12 +80,20 @@ Deno.serve(async (req) => {
           entry = { phone: c.phone_number, lastInbound: null, followupAfter: false };
           perContact.set(key, entry);
         }
+        
+        // Processing newest first:
         if (c.direction === "inbound") {
-          entry.lastInbound = c.created_at;
-          entry.followupAfter = false; // reset: customer replied after any follow-up
-          entry.phone = c.phone_number;
+          // The first inbound we see is the most recent one.
+          if (!entry.lastInbound) {
+            entry.lastInbound = c.created_at;
+            entry.phone = c.phone_number;
+          }
         } else if ((c.metadata as any)?.type === "inactivity_followup") {
-          entry.followupAfter = true;
+          // If we see a follow-up BEFORE we've seen an inbound (since we're going backwards in time),
+          // it means the follow-up was sent AFTER their last message.
+          if (!entry.lastInbound) {
+            entry.followupAfter = true;
+          }
         }
       }
 
