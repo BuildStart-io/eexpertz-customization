@@ -97,21 +97,32 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Orders placed by this business's customers
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("customer_phone, whatsapp_phone")
-        .eq("user_id", userId);
-      const orderKeys = new Set<string>();
-      for (const o of orders || []) {
-        if (o.customer_phone) orderKeys.add(normalizeKey(o.customer_phone));
-        if (o.whatsapp_phone) orderKeys.add(normalizeKey(o.whatsapp_phone));
-      }
-
+      // Pre-filter eligible contacts before checking orders/takeovers to save DB queries
+      const eligibleEntries = [];
       for (const [key, entry] of perContact) {
         if (!entry.lastInbound) continue;
         if (entry.followupAfter) continue; // already followed up since their last message
         if (new Date(entry.lastInbound).getTime() > cutoffTime) continue; // not idle long enough
+        eligibleEntries.push({ key, entry });
+      }
+
+      if (!eligibleEntries.length) continue;
+
+      // Check if any eligible contacts have placed an order
+      const eligiblePhones = eligibleEntries.map(e => e.entry.phone);
+      const orderKeys = new Set<string>();
+      
+      // Fetch in chunks of 100 to avoid huge URL strings
+      for (let i = 0; i < eligiblePhones.length; i += 100) {
+        const chunk = eligiblePhones.slice(i, i + 100);
+        const { data: oData1 } = await supabase.from("orders").select("customer_phone").eq("user_id", userId).in("customer_phone", chunk);
+        const { data: oData2 } = await supabase.from("orders").select("whatsapp_phone").eq("user_id", userId).in("whatsapp_phone", chunk);
+        
+        for (const o of oData1 || []) if (o.customer_phone) orderKeys.add(normalizeKey(o.customer_phone));
+        for (const o of oData2 || []) if (o.whatsapp_phone) orderKeys.add(normalizeKey(o.whatsapp_phone));
+      }
+
+      for (const { key, entry } of eligibleEntries) {
         if (orderKeys.has(key)) continue; // customer already ordered — never send
 
         // Skip if the chat has been taken over by a human
