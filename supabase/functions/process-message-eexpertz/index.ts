@@ -513,6 +513,13 @@ async function processMessage(
   // -------------------------------------------------------------
   // CUSTOMIZATION 3: PAYMENT RECEIPT HANDLING (IMAGE / PDF)
   // -------------------------------------------------------------
+  if (messageType === "audio" || messageType === "ptt") {
+    console.log(`[${corrId}] Voice message received from ${phoneNumber}. Asking to type.`);
+    const voiceFallbackText = cfg.receipt_workflow?.voice_fallback_text || "කරුණාකර ඔබගේ පණිවිඩය Type කර එවන්න (Please type your message).";
+    await sendTextMsg(voiceFallbackText, { type: "voice_fallback" });
+    return;
+  }
+
   if (messageType === "image" || messageType === "document" || isMediaMessage) {
     console.log(`[${corrId}] Inbound receipt/media from ${phoneNumber}. Triggering detail collection.`);
     const requestText = cfg.receipt_workflow?.request_details_text || DEFAULT_SETS_CONFIG.receipt_workflow.request_details_text;
