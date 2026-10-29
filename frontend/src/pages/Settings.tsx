@@ -12,7 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, MessageSquare, CreditCard, Copy, Check, Smartphone, RefreshCw, Wifi, WifiOff, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Clock, Lock } from "lucide-react";
+import { Loader2, Save, MessageSquare, CreditCard, Copy, Check, Smartphone, RefreshCw, Wifi, WifiOff, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Clock, Lock, Image as ImageIcon, X } from "lucide-react";
+import { uploadMedia, deleteMedia } from "@/lib/mediaStorage";
 import WelcomeMediaUpload from "@/components/settings/WelcomeMediaUpload";
 import StaffManager from "@/components/settings/StaffManager";
 import MessageSetsManager, { MessageSetsConfig } from "@/components/settings/MessageSetsManager";
@@ -128,6 +129,8 @@ export default function Settings() {
   const [inactivityFollowupEnabled, setInactivityFollowupEnabled] = useState(false);
   const [inactivityFollowupMessage, setInactivityFollowupMessage] = useState("");
   const [inactivityFollowupHours, setInactivityFollowupHours] = useState<string>("24");
+  const [inactivityFollowupImageUrl, setInactivityFollowupImageUrl] = useState("");
+  const [uploadingFollowupImage, setUploadingFollowupImage] = useState(false);
 
   // First Message Keyword Feature
   const [firstMessageKeywordEnabled, setFirstMessageKeywordEnabled] = useState(false);
@@ -231,6 +234,7 @@ export default function Settings() {
             setInactivityFollowupMessage(iVal?.text || "");
             setInactivityFollowupEnabled(iVal?.enabled ?? false);
             setInactivityFollowupHours(String(iVal?.hours ?? 24));
+            setInactivityFollowupImageUrl(iVal?.image_url || "");
             break;
           }
           case "first_message_keyword_config": {
@@ -627,6 +631,37 @@ export default function Settings() {
     saveSettings("order_followup_message", { text: orderFollowupMessage, enabled: orderFollowupEnabled });
   };
 
+  const handleFollowupImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file type", description: "Please upload an image file (JPG, PNG, WebP).", variant: "destructive" });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Image exceeds 20MB limit.", variant: "destructive" });
+      return;
+    }
+    setUploadingFollowupImage(true);
+    try {
+      const url = await uploadMedia(file, "sets");
+      setInactivityFollowupImageUrl(url);
+      toast({ title: "Follow-up image uploaded" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingFollowupImage(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveFollowupImage = async () => {
+    if (inactivityFollowupImageUrl) {
+      deleteMedia(inactivityFollowupImageUrl).catch(() => {});
+      setInactivityFollowupImageUrl("");
+    }
+  };
+
   const handleSaveInactivityFollowup = () => {
     const hours = Number(inactivityFollowupHours);
     if (inactivityFollowupEnabled && (!Number.isFinite(hours) || hours <= 0)) {
@@ -637,6 +672,7 @@ export default function Settings() {
       text: inactivityFollowupMessage,
       enabled: inactivityFollowupEnabled,
       hours,
+      image_url: inactivityFollowupImageUrl || "",
     });
   };
 
@@ -956,7 +992,7 @@ export default function Settings() {
                 ) : (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="inactivity-followup">Message</Label>
+                      <Label htmlFor="inactivity-followup">Message (Caption)</Label>
                       <Textarea
                         id="inactivity-followup"
                         value={inactivityFollowupMessage}
@@ -965,6 +1001,60 @@ export default function Settings() {
                         rows={4}
                         disabled={!inactivityFollowupEnabled}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Image (Optional)</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Upload an image to send with the follow-up notification. The message above will be delivered as the caption of this image.
+                      </p>
+                      {inactivityFollowupImageUrl ? (
+                        <div className="relative group w-32 h-32 rounded-lg overflow-hidden border border-border bg-muted">
+                          <img
+                            src={inactivityFollowupImageUrl}
+                            alt="Follow-up preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveFollowupImage}
+                            disabled={!inactivityFollowupEnabled}
+                            className="absolute top-1.5 right-1.5 p-1 bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors"
+                            title="Remove image"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <input
+                            type="file"
+                            id="inactivity-image-upload"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={!inactivityFollowupEnabled || uploadingFollowupImage}
+                            onChange={handleFollowupImageUpload}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={!inactivityFollowupEnabled || uploadingFollowupImage}
+                            onClick={() => document.getElementById("inactivity-image-upload")?.click()}
+                          >
+                            {uploadingFollowupImage ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Uploading Image...
+                              </>
+                            ) : (
+                              <>
+                                <ImageIcon className="mr-2 h-4 w-4" />
+                                Upload Image
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="inactivity-hours">Send after (hours since customer's last message)</Label>

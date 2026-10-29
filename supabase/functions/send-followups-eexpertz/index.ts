@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     if (sErr) throw sErr;
 
     for (const row of settingsRows || []) {
-      const cfg = (row.value || {}) as { enabled?: boolean; text?: string; hours?: number };
+      const cfg = (row.value || {}) as { enabled?: boolean; text?: string; hours?: number; image_url?: string };
       if (!cfg.enabled || !cfg.text?.trim()) continue;
       const hours = Number(cfg.hours);
       if (!Number.isFinite(hours) || hours <= 0) continue;
@@ -138,13 +138,22 @@ Deno.serve(async (req) => {
         if (takeover?.is_taken_over) continue;
 
         try {
+          const payload: Record<string, any> = {
+            to: entry.phone,
+            message: cfg.text.trim(),
+            sessionApiKey,
+          };
+          if (cfg.image_url?.trim()) {
+            payload.mediaUrl = cfg.image_url.trim();
+          }
+
           const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-eexpertz`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${serviceKey}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ to: entry.phone, message: cfg.text.trim(), sessionApiKey }),
+            body: JSON.stringify(payload),
           });
           if (!res.ok) {
             console.error("follow-up send failed", entry.phone, (await res.text()).substring(0, 200));
@@ -155,8 +164,11 @@ Deno.serve(async (req) => {
             phone_number: entry.phone,
             message: cfg.text.trim(),
             direction: "outbound",
-            message_type: "text",
-            metadata: { type: "inactivity_followup" },
+            message_type: cfg.image_url?.trim() ? "image" : "text",
+            metadata: {
+              type: "inactivity_followup",
+              ...(cfg.image_url?.trim() ? { mediaUrl: cfg.image_url.trim() } : {}),
+            },
           });
           summary.push({ userId, phone: entry.phone });
         } catch (e) {
