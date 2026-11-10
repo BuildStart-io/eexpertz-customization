@@ -23,10 +23,25 @@ import {
   Trash2,
   Crosshair,
 } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Message {
   id: string;
@@ -44,11 +59,8 @@ interface ChatThread {
   last_time: string;
   sender_name: string;
   unread_count: number;
-}
-
-interface TrackedPhone {
-  phone_number: string;
-  faq_questions: string[];
+  current_stage?: string | null;
+  received_sets?: string[] | null;
 }
 
 export default function Conversations() {
@@ -57,46 +69,64 @@ export default function Conversations() {
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [hasMoreThreads, setHasMoreThreads] = useState(true);
+  const [loadingMoreThreads, setLoadingMoreThreads] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const [takenOverChats, setTakenOverChats] = useState<Set<string>>(new Set());
   const [togglingTakeover, setTogglingTakeover] = useState(false);
   const [trackedPhones, setTrackedPhones] = useState<Map<string, string[]>>(new Map());
-  const [customerStages, setCustomerStages] = useState<Map<string, { current_stage: string; received_sets: string[] }>>(new Map());
+  const [customerStages, setCustomerStages] = useState<
+    Map<string, { current_stage: string; received_sets: string[] }>
+  >(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const { effectiveUserId } = useStaffAccess();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Fetch customer stages
-  const fetchCustomerStages = useCallback(async () => {
-    if (!user) return;
-    try {
-      const ownerId = effectiveUserId || user.id;
-      const { data } = await supabase
-        .from("customer_stages" as any)
-        .select("phone_number, current_stage, received_sets")
-        .eq("user_id", ownerId);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-      if (data) {
-        const stageMap = new Map<string, { current_stage: string; received_sets: string[] }>();
-        for (const row of data as any[]) {
-          stageMap.set(row.phone_number, {
-            current_stage: row.current_stage,
-            received_sets: Array.isArray(row.received_sets) ? row.received_sets : [],
-          });
-        }
-        setCustomerStages(stageMap);
-      }
-    } catch (err) {
-      console.error("Error fetching customer stages:", err);
+  const formatWhatsAppText = (text: string) => {
+    return (text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\*(.+?)\*/g, "<strong>$1</strong>")
+      .replace(/_(.+?)_/g, "<em>$1</em>")
+      .replace(/~(.+?)~/g, "<del>$1</del>");
+  };
+
+  const formatTime = (dateStr: string) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "";
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const hours = diff / (1000 * 60 * 60);
+
+    if (hours < 24) {
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     }
-  }, [user, effectiveUserId]);
+    if (hours < 48) return "Yesterday";
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
 
-  const renderStageBadge = (phoneNumber: string) => {
-    const stageInfo = customerStages.get(phoneNumber);
+  const renderStageBadge = (phoneNumber: string, threadStage?: string | null, threadSets?: string[] | null) => {
+    const stageInfo =
+      customerStages.get(phoneNumber) ||
+      (threadStage
+        ? { current_stage: threadStage, received_sets: threadSets || [] }
+        : null);
+
     if (!stageInfo) return null;
     const { current_stage, received_sets } = stageInfo;
 
@@ -145,14 +175,133 @@ export default function Conversations() {
     return null;
   };
 
+  const fetchMessages = useCallback(
+    async (phoneNumber: string) => {
+      setMessagesLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("conversations")
+          .select("*")
+          .eq("phone_number", phoneNumber)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+        const list = (data || []).reverse();
+        setMessages(list);
+        setHasMoreMessages((data || []).length === 50);
+        setTimeout(scrollToBottom, 100);
+      } catch (error: any) {
+        toast({
+          title: "Error loading messages",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setMessagesLoading(false);
+      }
+    },
+    [toast]
+  );
+
+  const loadOlderMessages = async () => {
+    if (!selectedPhone || messages.length === 0 || loadingOlderMessages) return;
+    setLoadingOlderMessages(true);
+    try {
+      const oldestTimestamp = messages[0].created_at;
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .eq("phone_number", selectedPhone)
+        .lt("created_at", oldestTimestamp)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      const older = (data || []).reverse();
+      setHasMoreMessages((data || []).length === 50);
+      setMessages((prev) => [...older, ...prev]);
+    } catch (error: any) {
+      toast({
+        title: "Error loading older messages",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  };
+
+  const fetchThreads = useCallback(
+    async (search?: string, offset: number = 0) => {
+      try {
+        if (offset === 0) {
+          setLoading(true);
+        } else {
+          setLoadingMoreThreads(true);
+        }
+
+        const limit = 50;
+        const { data, error } = await supabase.rpc("get_chat_threads" as any, {
+          _limit: limit,
+          _offset: offset,
+          _search: search && search.trim() ? search.trim() : null,
+        });
+
+        if (error) throw error;
+
+        const loaded = (data as any[]) || [];
+        const mappedThreads: ChatThread[] = loaded.map((row) => ({
+          phone_number: row.phone_number,
+          last_message: row.last_message || "",
+          last_time: row.last_time,
+          sender_name: row.sender_name || "Unknown",
+          unread_count: Number(row.unread_count || 0),
+          current_stage: row.current_stage || null,
+          received_sets: Array.isArray(row.received_sets) ? row.received_sets : [],
+        }));
+
+        setCustomerStages((prev) => {
+          const next = new Map(prev);
+          mappedThreads.forEach((t) => {
+            if (t.current_stage) {
+              next.set(t.phone_number, {
+                current_stage: t.current_stage,
+                received_sets: t.received_sets || [],
+              });
+            }
+          });
+          return next;
+        });
+
+        setHasMoreThreads(mappedThreads.length >= limit);
+        setThreads((prev) => (offset === 0 ? mappedThreads : [...prev, ...mappedThreads]));
+      } catch (error: any) {
+        console.error("Error fetching threads:", error);
+        toast({
+          title: "Error loading conversations",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+        setLoadingMoreThreads(false);
+      }
+    },
+    [toast]
+  );
+
   // Fetch tracked FAQ usage phones
   const fetchTrackedPhones = useCallback(async () => {
     if (!user) return;
     try {
+      const ownerId = effectiveUserId || user.id;
       const { data } = await supabase
         .from("faq_usage_logs" as any)
         .select("phone_number, faq_id, faqs!inner(question)")
-        .order("created_at", { ascending: false });
+        .eq("user_id", ownerId)
+        .order("created_at", { ascending: false })
+        .limit(200);
 
       if (data) {
         const phoneMap = new Map<string, string[]>();
@@ -172,84 +321,81 @@ export default function Conversations() {
     } catch (err) {
       console.error("Error fetching tracked phones:", err);
     }
-  }, [user]);
+  }, [user, effectiveUserId]);
 
-  // Auto-select phone from URL query param
-  useEffect(() => {
-    const phoneParam = searchParams.get("phone");
-    if (phoneParam && !selectedPhone) {
-      setSelectedPhone(phoneParam);
-      fetchMessages(phoneParam);
-      // Clean up the URL
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams]);
-
-  // Fetch all takeover states for the user
+  // Fetch takeover states
   const fetchTakeovers = useCallback(async () => {
     if (!user) return;
+    const targetUserId = effectiveUserId || user.id;
     const { data } = await supabase
       .from("chat_takeovers" as any)
       .select("phone_number")
-      .eq("user_id", user.id)
+      .eq("user_id", targetUserId)
       .eq("is_taken_over", true);
     if (data) {
       setTakenOverChats(new Set((data as any[]).map((d: any) => d.phone_number)));
     }
-  }, [user]);
+  }, [user, effectiveUserId]);
 
-  useEffect(() => {
-    fetchTakeovers();
-    fetchTrackedPhones();
-    fetchCustomerStages();
-  }, [fetchTakeovers, fetchTrackedPhones, fetchCustomerStages]);
-
-  const toggleTakeover = useCallback(async (phoneNumber: string) => {
-    if (!user || togglingTakeover) return;
-    setTogglingTakeover(true);
-    try {
-      const isTakenOver = takenOverChats.has(phoneNumber);
-      if (isTakenOver) {
-        await (supabase.from("chat_takeovers" as any) as any)
-          .delete()
-          .eq("user_id", effectiveUserId || user.id)
-          .eq("phone_number", phoneNumber);
-        setTakenOverChats(prev => {
-          const next = new Set(prev);
-          next.delete(phoneNumber);
-          return next;
-        });
-        toast({ title: "Bot re-enabled for this chat" });
-      } else {
-        await (supabase.from("chat_takeovers" as any) as any)
-          .upsert({
-            user_id: effectiveUserId || user.id,
-            phone_number: phoneNumber,
-            is_taken_over: true,
-          }, { onConflict: "user_id,phone_number" });
-        setTakenOverChats(prev => new Set(prev).add(phoneNumber));
-        toast({ title: "Bot paused — you're in control" });
+  const toggleTakeover = useCallback(
+    async (phoneNumber: string) => {
+      if (!user || togglingTakeover) return;
+      setTogglingTakeover(true);
+      try {
+        const targetUserId = effectiveUserId || user.id;
+        const isTakenOver = takenOverChats.has(phoneNumber);
+        if (isTakenOver) {
+          await (supabase.from("chat_takeovers" as any) as any)
+            .delete()
+            .eq("user_id", targetUserId)
+            .eq("phone_number", phoneNumber);
+          setTakenOverChats((prev) => {
+            const next = new Set(prev);
+            next.delete(phoneNumber);
+            return next;
+          });
+          toast({ title: "Bot re-enabled for this chat" });
+        } else {
+          await (supabase.from("chat_takeovers" as any) as any).upsert(
+            {
+              user_id: targetUserId,
+              phone_number: phoneNumber,
+              is_taken_over: true,
+            },
+            { onConflict: "user_id,phone_number" }
+          );
+          setTakenOverChats((prev) => new Set(prev).add(phoneNumber));
+          toast({ title: "Bot paused — you're in control" });
+        }
+      } catch (err: any) {
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+      } finally {
+        setTogglingTakeover(false);
       }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setTogglingTakeover(false);
-    }
-  }, [user, takenOverChats, togglingTakeover, toast]);
+    },
+    [user, effectiveUserId, takenOverChats, togglingTakeover, toast]
+  );
 
   const deleteThread = async (phoneNumber: string) => {
     try {
+      const targetUserId = effectiveUserId || user?.id;
       const { error } = await supabase
         .from("conversations")
         .delete()
         .eq("phone_number", phoneNumber);
       if (error) throw error;
-      await (supabase.from("chat_takeovers" as any) as any)
-        .delete()
-        .eq("phone_number", phoneNumber);
-      await (supabase.from("customer_stages" as any) as any)
-        .delete()
-        .eq("phone_number", phoneNumber);
+
+      if (targetUserId) {
+        await (supabase.from("chat_takeovers" as any) as any)
+          .delete()
+          .eq("phone_number", phoneNumber)
+          .eq("user_id", targetUserId);
+        await (supabase.from("customer_stages" as any) as any)
+          .delete()
+          .eq("phone_number", phoneNumber)
+          .eq("user_id", targetUserId);
+      }
+
       if (selectedPhone === phoneNumber) {
         setSelectedPhone(null);
         setMessages([]);
@@ -257,137 +403,13 @@ export default function Conversations() {
       setThreads((prev) => prev.filter((t) => t.phone_number !== phoneNumber));
       toast({ title: "Conversation deleted" });
     } catch (error: any) {
-      toast({ title: "Error deleting conversation", description: error.message, variant: "destructive" });
-    }
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const fetchThreads = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      const threadMap = new Map<string, ChatThread>();
-      (data || []).forEach((msg) => {
-        const existing = threadMap.get(msg.phone_number);
-        const senderName =
-          msg.direction === "inbound"
-            ? (msg.metadata as any)?.senderName || "Unknown"
-            : "";
-
-        if (!existing) {
-          threadMap.set(msg.phone_number, {
-            phone_number: msg.phone_number,
-            last_message: msg.message,
-            last_time: msg.created_at,
-            sender_name: senderName || "Unknown",
-            unread_count: 0,
-          });
-        } else if (senderName && existing.sender_name === "Unknown") {
-          existing.sender_name = senderName;
-        }
-      });
-
-      setThreads(Array.from(threadMap.values()));
-    } catch (error: any) {
-      console.error("Error fetching threads:", error);
       toast({
-        title: "Error loading conversations",
+        title: "Error deleting conversation",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  }, [toast]);
-
-  const fetchMessages = useCallback(
-    async (phoneNumber: string) => {
-      setMessagesLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("conversations")
-          .select("*")
-          .eq("phone_number", phoneNumber)
-          .order("created_at", { ascending: true });
-
-        if (error) throw error;
-        setMessages(data || []);
-        setTimeout(scrollToBottom, 100);
-      } catch (error: any) {
-        toast({
-          title: "Error loading messages",
-          description: error.message,
-          variant: "destructive",
-        });
-      } finally {
-        setMessagesLoading(false);
-      }
-    },
-    [toast]
-  );
-
-  useEffect(() => {
-    fetchThreads();
-  }, [fetchThreads]);
-
-  // Realtime subscription for new messages
-  useEffect(() => {
-    const channel = supabase
-      .channel("conversations-realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "conversations" },
-        (payload) => {
-          const newMsg = payload.new as Message;
-
-          setThreads((prev) => {
-            const existing = prev.find(
-              (t) => t.phone_number === newMsg.phone_number
-            );
-            if (existing) {
-              return prev.map((t) =>
-                t.phone_number === newMsg.phone_number
-                  ? {
-                      ...t,
-                      last_message: newMsg.message,
-                      last_time: newMsg.created_at,
-                    }
-                  : t
-              );
-            }
-            return [
-              {
-                phone_number: newMsg.phone_number,
-                last_message: newMsg.message,
-                last_time: newMsg.created_at,
-                sender_name:
-                  (newMsg.metadata as any)?.senderName || "Unknown",
-                unread_count: 0,
-              },
-              ...prev,
-            ];
-          });
-
-          if (newMsg.phone_number === selectedPhone) {
-            setMessages((prev) => [...prev, newMsg]);
-            setTimeout(scrollToBottom, 100);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedPhone]);
+  };
 
   const handleSelectThread = (phoneNumber: string) => {
     setSelectedPhone(phoneNumber);
@@ -409,21 +431,19 @@ export default function Conversations() {
 
       if (sessionError) throw sessionError;
 
-      const response = await fetch(
-        getFunctionUrl("send-whatsapp"),
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: selectedPhone,
-            message: replyText,
-            sessionApiKey: (sessionData as any)?.session_api_key || (sessionData as any)?.session_id,
-          }),
-        }
-      );
+      const response = await fetch(getFunctionUrl("send-whatsapp"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: selectedPhone,
+          message: replyText,
+          sessionApiKey:
+            (sessionData as any)?.session_api_key || (sessionData as any)?.session_id,
+        }),
+      });
 
       if (!response.ok) {
         const errData = await response.json();
@@ -451,35 +471,100 @@ export default function Conversations() {
     }
   };
 
-  const formatWhatsAppText = (text: string) => {
-    return text
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\*(.+?)\*/g, '<strong>$1</strong>')
-      .replace(/_(.+?)_/g, '<em>$1</em>')
-      .replace(/~(.+?)~/g, '<del>$1</del>');
-  };
+  // Lifecycle effects in proper order
+  useEffect(() => {
+    fetchTakeovers();
+    fetchTrackedPhones();
+  }, [fetchTakeovers, fetchTrackedPhones]);
 
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = diff / (1000 * 60 * 60);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchThreads(searchQuery, 0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, fetchThreads]);
 
-    if (hours < 24) {
-      return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
+  useEffect(() => {
+    const phoneParam = searchParams.get("phone");
+    if (phoneParam && !selectedPhone) {
+      setSelectedPhone(phoneParam);
+      fetchMessages(phoneParam);
+      setThreads((prev) => {
+        if (!prev.some((t) => t.phone_number === phoneParam)) {
+          return [
+            {
+              phone_number: phoneParam,
+              last_message: "",
+              last_time: new Date().toISOString(),
+              sender_name: "Customer",
+              unread_count: 0,
+            },
+            ...prev,
+          ];
+        }
+        return prev;
       });
+      setSearchParams({}, { replace: true });
     }
-    if (hours < 48) return "Yesterday";
-    return date.toLocaleDateString([], { month: "short", day: "numeric" });
-  };
+  }, [searchParams, selectedPhone, fetchMessages, setSearchParams]);
 
-  const filteredThreads = threads.filter(
-    (t) =>
-      t.phone_number.includes(searchQuery) ||
-      t.sender_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Realtime subscription for incoming/outgoing messages
+  useEffect(() => {
+    const targetSchema = import.meta.env.VITE_SUPABASE_SCHEMA || "eexpertz_customization";
+    const channel = supabase
+      .channel("conversations-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: targetSchema, table: "conversations" },
+        (payload) => {
+          const newMsg = payload.new as Message;
+
+          setThreads((prev) => {
+            const existing = prev.find((t) => t.phone_number === newMsg.phone_number);
+            if (existing) {
+              const updated = {
+                ...existing,
+                last_message: newMsg.message,
+                last_time: newMsg.created_at,
+              };
+              return [
+                updated,
+                ...prev.filter((t) => t.phone_number !== newMsg.phone_number),
+              ];
+            }
+            return [
+              {
+                phone_number: newMsg.phone_number,
+                last_message: newMsg.message,
+                last_time: newMsg.created_at,
+                sender_name: (newMsg.metadata as any)?.senderName || "Unknown",
+                unread_count: 0,
+              },
+              ...prev,
+            ];
+          });
+
+          if (newMsg.phone_number === selectedPhone) {
+            setMessages((prev) => [...prev, newMsg]);
+            setTimeout(scrollToBottom, 100);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedPhone]);
+
+  const filteredThreads = searchQuery.trim()
+    ? threads.filter(
+        (t) =>
+          (t.phone_number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (t.sender_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (t.last_message || "").toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : threads;
 
   return (
     <DashboardLayout>
@@ -518,103 +603,151 @@ export default function Conversations() {
               ) : filteredThreads.length === 0 ? (
                 <div className="text-center py-8 px-4">
                   <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    No conversations yet
-                  </p>
+                  <p className="text-sm text-muted-foreground">No conversations yet</p>
                 </div>
               ) : (
                 <TooltipProvider>
-                  {filteredThreads.map((thread) => {
-                    const isTracked = trackedPhones.has(thread.phone_number);
-                    const trackedFaqs = trackedPhones.get(thread.phone_number) || [];
-                    
-                    return (
-                      <button
-                        key={thread.phone_number}
-                        onClick={() => handleSelectThread(thread.phone_number)}
-                        className={cn(
-                          "w-full text-left px-4 py-3 border-b hover:bg-muted/50 transition-colors",
-                          selectedPhone === thread.phone_number && "bg-muted",
-                          isTracked && "border-l-4 border-l-primary bg-primary/5"
-                        )}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                            <div className={cn(
-                              "h-10 w-10 rounded-full flex items-center justify-center",
-                              isTracked ? "bg-primary/20 ring-2 ring-primary" : "bg-primary/10"
-                            )}>
-                              <User className={cn("h-5 w-5", isTracked ? "text-primary" : "text-primary")} />
-                            </div>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <span
-                                  role="button"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="p-1.5 rounded hover:bg-destructive/10 text-destructive/60 hover:text-destructive transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </span>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
-                                  <AlertDialogDescription>This will permanently delete all messages with {thread.phone_number}. This action cannot be undone.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteThread(thread.phone_number)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <p className={cn(
-                                  "font-medium text-sm truncate",
-                                  isTracked && "text-primary font-bold"
-                                )}>
-                                  {thread.sender_name}
-                                </p>
-                                {renderStageBadge(thread.phone_number)}
-                                {isTracked && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span>
-                                        <Crosshair className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" className="max-w-xs">
-                                      <p className="font-medium text-xs mb-1">Triggered tracked FAQs:</p>
-                                      <ul className="text-xs space-y-0.5">
-                                        {trackedFaqs.map((q, i) => (
-                                          <li key={i} className="truncate">• {q}</li>
-                                        ))}
-                                      </ul>
-                                    </TooltipContent>
-                                  </Tooltip>
+                  <div className="divide-y">
+                    {filteredThreads.map((thread) => {
+                      const isTracked = trackedPhones.has(thread.phone_number);
+                      const trackedFaqs = trackedPhones.get(thread.phone_number) || [];
+
+                      return (
+                        <button
+                          key={thread.phone_number}
+                          onClick={() => handleSelectThread(thread.phone_number)}
+                          className={cn(
+                            "w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors",
+                            selectedPhone === thread.phone_number && "bg-muted",
+                            isTracked && "border-l-4 border-l-primary bg-primary/5"
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                              <div
+                                className={cn(
+                                  "h-10 w-10 rounded-full flex items-center justify-center",
+                                  isTracked
+                                    ? "bg-primary/20 ring-2 ring-primary"
+                                    : "bg-primary/10"
                                 )}
+                              >
+                                <User
+                                  className={cn(
+                                    "h-5 w-5",
+                                    isTracked ? "text-primary" : "text-primary"
+                                  )}
+                                />
                               </div>
-                              <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                                {formatTime(thread.last_time)}
-                              </span>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <span
+                                    role="button"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="p-1.5 rounded hover:bg-destructive/10 text-destructive/60 hover:text-destructive transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </span>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will permanently delete all messages with{" "}
+                                      {thread.phone_number}. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteThread(thread.phone_number)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
-                            <div className="flex items-center justify-between mt-0.5">
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Phone className="h-3 w-3" />
-                                {thread.phone_number}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <p
+                                    className={cn(
+                                      "font-medium text-sm truncate",
+                                      isTracked && "text-primary font-bold"
+                                    )}
+                                  >
+                                    {thread.sender_name}
+                                  </p>
+                                  {renderStageBadge(
+                                    thread.phone_number,
+                                    thread.current_stage,
+                                    thread.received_sets
+                                  )}
+                                  {isTracked && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span>
+                                          <Crosshair className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="right" className="max-w-xs">
+                                        <p className="font-medium text-xs mb-1">
+                                          Triggered tracked FAQs:
+                                        </p>
+                                        <ul className="text-xs space-y-0.5">
+                                          {trackedFaqs.map((q, i) => (
+                                            <li key={i} className="truncate">
+                                              • {q}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                  {formatTime(thread.last_time)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between mt-0.5">
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {thread.phone_number}
+                                </p>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate mt-0.5">
+                                {thread.last_message}
                               </p>
                             </div>
-                            <p className="text-sm text-muted-foreground truncate mt-0.5">
-                              {thread.last_message}
-                            </p>
                           </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </TooltipProvider>
+              )}
+
+              {hasMoreThreads && (
+                <div className="p-3 text-center border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={loadingMoreThreads}
+                    onClick={() => fetchThreads(searchQuery, threads.length)}
+                    className="w-full text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {loadingMoreThreads ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        Loading older threads...
+                      </>
+                    ) : (
+                      "Load more conversations"
+                    )}
+                  </Button>
+                </div>
               )}
             </ScrollArea>
           </div>
@@ -638,31 +771,45 @@ export default function Conversations() {
                   >
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
-                  <div className={cn(
-                    "h-9 w-9 rounded-full flex items-center justify-center",
-                    trackedPhones.has(selectedPhone) ? "bg-primary/20 ring-2 ring-primary" : "bg-primary/10"
-                  )}>
+                  <div
+                    className={cn(
+                      "h-9 w-9 rounded-full flex items-center justify-center",
+                      trackedPhones.has(selectedPhone)
+                        ? "bg-primary/20 ring-2 ring-primary"
+                        : "bg-primary/10"
+                    )}
+                  >
                     <User className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <p className={cn(
-                        "font-medium text-sm",
-                        trackedPhones.has(selectedPhone) && "text-primary font-bold"
-                      )}>
+                      <p
+                        className={cn(
+                          "font-medium text-sm",
+                          trackedPhones.has(selectedPhone) && "text-primary font-bold"
+                        )}
+                      >
                         {threads.find((t) => t.phone_number === selectedPhone)
-                          ?.sender_name || "Unknown"}
+                          ?.sender_name || "Customer"}
                       </p>
-                      {trackedPhones.has(selectedPhone) && (
-                        <Badge variant="outline" className="gap-1 text-xs border-primary/50 text-primary">
-                          <Crosshair className="h-3 w-3" />
-                          FAQ Tracked
+                      {renderStageBadge(
+                        selectedPhone,
+                        threads.find((t) => t.phone_number === selectedPhone)
+                          ?.current_stage,
+                        threads.find((t) => t.phone_number === selectedPhone)
+                          ?.received_sets
+                      )}
+                      {takenOverChats.has(selectedPhone) ? (
+                        <Badge variant="outline" className="text-xs text-amber-500 border-amber-500">
+                          Human Control
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-emerald-500 border-emerald-500">
+                          AI Active
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedPhone}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{selectedPhone}</p>
                   </div>
                   <Button
                     variant={takenOverChats.has(selectedPhone) ? "default" : "outline"}
@@ -687,6 +834,27 @@ export default function Conversations() {
 
                 {/* Messages */}
                 <ScrollArea className="flex-1 p-4">
+                  {hasMoreMessages && (
+                    <div className="text-center py-2 mb-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={loadingOlderMessages}
+                        onClick={loadOlderMessages}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {loadingOlderMessages ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            Loading older messages...
+                          </>
+                        ) : (
+                          "Load older messages"
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
                   {messagesLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -711,7 +879,12 @@ export default function Conversations() {
                                 : "bg-muted rounded-bl-md"
                             )}
                           >
-                            <p className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(msg.message) }} />
+                            <p
+                              className="whitespace-pre-wrap"
+                              dangerouslySetInnerHTML={{
+                                __html: formatWhatsAppText(msg.message),
+                              }}
+                            />
                             <p
                               className={cn(
                                 "text-[10px] mt-1",
@@ -720,10 +893,7 @@ export default function Conversations() {
                                   : "text-muted-foreground"
                               )}
                             >
-                              {new Date(msg.created_at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {formatTime(msg.created_at)}
                             </p>
                           </div>
                         </div>
@@ -733,7 +903,7 @@ export default function Conversations() {
                   )}
                 </ScrollArea>
 
-                {/* Reply Input */}
+                {/* Reply Bar */}
                 <div className="p-3 border-t bg-card">
                   <form
                     onSubmit={(e) => {
@@ -743,17 +913,13 @@ export default function Conversations() {
                     className="flex gap-2"
                   >
                     <Input
+                      placeholder="Type a message..."
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      placeholder="Type a message..."
-                      className="flex-1"
                       disabled={sending}
+                      className="flex-1"
                     />
-                    <Button
-                      type="submit"
-                      size="icon"
-                      disabled={!replyText.trim() || sending}
-                    >
+                    <Button type="submit" size="icon" disabled={sending || !replyText.trim()}>
                       {sending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
@@ -764,14 +930,12 @@ export default function Conversations() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <MessageSquare className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium text-muted-foreground">
-                    Select a conversation
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Choose a chat from the list to view messages
+              <div className="flex-1 flex items-center justify-center text-center p-8">
+                <div>
+                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <h3 className="text-lg font-medium">Select a conversation</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Choose a chat from the left to view messages and reply
                   </p>
                 </div>
               </div>

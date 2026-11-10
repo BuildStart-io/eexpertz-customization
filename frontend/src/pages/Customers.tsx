@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -46,7 +46,8 @@ import {
   Copy,
   Check,
   Clock,
-  UserX
+  UserX,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -134,6 +135,11 @@ export default function Customers() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
 
+  // Server-side pagination
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 25;
+
   const copyToClipboard = (text: string, key: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
@@ -141,84 +147,120 @@ export default function Customers() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     const targetUserId = effectiveUserId || user?.id;
     if (!targetUserId) return;
 
     setLoading(true);
     try {
-      // 1. Fetch customer stages
-      const { data: stagesData, error: stagesError } = await supabase
+      // 1. Fetch customer stages with server-side filters & pagination
+      let query = supabase
         .from("customer_stages")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("user_id", targetUserId)
-        .order("updated_at", { ascending: false });
+        .or("receipt_url.not.is.null,current_stage.in.(pending_verification,receipt_pending,enrolled,completed)")
+        .or("customer_email.not.is.null,customer_name.not.is.null");
+
+      // Stage filter
+      if (stageFilter === "pending_verification") {
+        query = query.in("current_stage", ["pending_verification", "receipt_pending"]);
+      } else if (stageFilter === "enrolled") {
+        query = query.in("current_stage", ["enrolled", "completed"]);
+      }
+
+      // Search filter
+      const cleanSearch = search.trim();
+      if (cleanSearch) {
+        query = query.or(
+          `customer_name.ilike.%${cleanSearch}%,phone_number.ilike.%${cleanSearch}%,customer_email.ilike.%${cleanSearch}%,customer_phone.ilike.%${cleanSearch}%`
+        );
+      }
+
+      query = query
+        .order("updated_at", { ascending: false })
+        .range((page - 1) * pageSize, page * pageSize - 1);
+
+      const { data: stagesData, count, error: stagesError } = await query;
 
       if (stagesError) throw stagesError;
 
-      // 2. Fetch conversations to cross-reference pushNames & recent messages
-      const { data: convsData } = await supabase
-        .from("conversations")
-        .select("phone_number, message, direction, metadata, created_at")
-        .eq("user_id", targetUserId)
-        .order("created_at", { ascending: false })
-        .limit(1000);
+      const loadedStages = stagesData || [];
+      setTotalCount(count ?? 0);
 
+      // 2. Fetch conversations ONLY for the 25 phone numbers on the active page
+      const pagePhones = loadedStages.map((s: any) => s.phone_number);
       const convMap: Record<string, { lastMsg: string; lastTime: string; pushName?: string }> = {};
-      (convsData || []).forEach((c) => {
-        if (!convMap[c.phone_number]) {
-          const pushName = c.metadata?.senderName || c.metadata?.raw?.data?.pushName;
-          convMap[c.phone_number] = {
-            lastMsg: c.message,
-            lastTime: c.created_at,
-            pushName: pushName || undefined,
-          };
-        }
-      });
 
-      // Filter strictly: only customers who submitted a payment slip AND gave contact info
-      const slipCustomers: CustomerRecord[] = (stagesData || [])
-        .filter((s: any) => {
-          const hasSlipOrVerification =
-            !!s.receipt_url ||
-            s.current_stage === "pending_verification" ||
-            s.current_stage === "receipt_pending" ||
-            s.current_stage === "enrolled" ||
-            s.current_stage === "completed";
-          const hasContactInfo = !!s.customer_email || !!s.customer_name;
-          return hasSlipOrVerification && hasContactInfo;
-        })
-        .map((s: any) => {
-          const conv = convMap[s.phone_number];
-          return {
-            id: s.id,
-            phone_number: s.phone_number,
-            customer_name: s.customer_name || conv?.pushName || "Student",
-            customer_email: s.customer_email || null,
-            customer_phone: s.customer_phone || s.phone_number,
-            current_stage: s.current_stage || "pending_verification",
-            received_sets: Array.isArray(s.received_sets) ? s.received_sets : [],
-            receipt_url: s.receipt_url || null,
-            metadata: s.metadata || {},
-            created_at: s.created_at,
-            updated_at: s.updated_at,
-            last_message: conv?.lastMsg || null,
-            last_message_at: conv?.lastTime || s.updated_at,
-            push_name: conv?.pushName || null,
-          };
+      if (pagePhones.length > 0) {
+        const { data: convsData } = await supabase
+          .from("conversations")
+          .select("phone_number, message, direction, metadata, created_at")
+          .eq("user_id", targetUserId)
+          .in("phone_number", pagePhones)
+          .order("created_at", { ascending: false });
+
+        (convsData || []).forEach((c: any) => {
+          if (!convMap[c.phone_number]) {
+            const pushName = c.metadata?.senderName || c.metadata?.raw?.data?.pushName;
+            convMap[c.phone_number] = {
+              lastMsg: c.message,
+              lastTime: c.created_at,
+              pushName: pushName || undefined,
+            };
+          }
         });
+      }
+
+      const slipCustomers: CustomerRecord[] = loadedStages.map((s: any) => {
+        const conv = convMap[s.phone_number];
+        return {
+          id: s.id,
+          phone_number: s.phone_number,
+          customer_name: s.customer_name || conv?.pushName || "Student",
+          customer_email: s.customer_email || null,
+          customer_phone: s.customer_phone || s.phone_number,
+          current_stage: s.current_stage || "pending_verification",
+          received_sets: Array.isArray(s.received_sets) ? s.received_sets : [],
+          receipt_url: s.receipt_url || null,
+          metadata: s.metadata || {},
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+          last_message: conv?.lastMsg || null,
+          last_message_at: conv?.lastTime || s.updated_at,
+          push_name: conv?.pushName || null,
+        };
+      });
 
       setCustomers(slipCustomers);
     } catch (err) {
       console.error("Error loading customers:", err);
+      toast({
+        title: "Error loading customers",
+        description: (err as any)?.message || "Failed to load customers",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
+  }, [effectiveUserId, user?.id, stageFilter, search, page, toast]);
+
+  // Debounce search and reset to page 1
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCustomers();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [fetchCustomers]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
   };
 
-  useEffect(() => {
-    fetchCustomers();
-  }, [effectiveUserId, user?.id]);
+  const handleStageFilterChange = (val: string) => {
+    setStageFilter(val);
+    setPage(1);
+  };
 
   // Manually enroll customer
   const handleEnrollCustomer = async (customer: CustomerRecord) => {
@@ -236,7 +278,7 @@ export default function Customers() {
             ...customer.metadata,
             enrolled_at: new Date().toISOString(),
             enrolled_by: user?.email || "admin",
-          }
+          },
         })
         .eq("phone_number", customer.phone_number)
         .eq("user_id", targetUserId);
@@ -250,11 +292,17 @@ export default function Customers() {
         .eq("user_id", targetUserId);
 
       setCustomers((prev) =>
-        prev.map((c) => (c.phone_number === customer.phone_number ? { ...c, current_stage: "enrolled" } : c))
+        prev.map((c) =>
+          c.phone_number === customer.phone_number
+            ? { ...c, current_stage: "enrolled" }
+            : c
+        )
       );
 
       if (selectedCustomer?.phone_number === customer.phone_number) {
-        setSelectedCustomer((prev) => prev ? { ...prev, current_stage: "enrolled" } : null);
+        setSelectedCustomer((prev) =>
+          prev ? { ...prev, current_stage: "enrolled" } : null
+        );
       }
 
       toast({
@@ -285,7 +333,7 @@ export default function Customers() {
             ...customer.metadata,
             unenrolled_at: new Date().toISOString(),
             unenrolled_by: user?.email || "admin",
-          }
+          },
         })
         .eq("phone_number", customer.phone_number)
         .eq("user_id", targetUserId);
@@ -299,11 +347,17 @@ export default function Customers() {
         .eq("user_id", targetUserId);
 
       setCustomers((prev) =>
-        prev.map((c) => (c.phone_number === customer.phone_number ? { ...c, current_stage: "pending_verification" } : c))
+        prev.map((c) =>
+          c.phone_number === customer.phone_number
+            ? { ...c, current_stage: "pending_verification" }
+            : c
+        )
       );
 
       if (selectedCustomer?.phone_number === customer.phone_number) {
-        setSelectedCustomer((prev) => prev ? { ...prev, current_stage: "pending_verification" } : null);
+        setSelectedCustomer((prev) =>
+          prev ? { ...prev, current_stage: "pending_verification" } : null
+        );
       }
 
       toast({
@@ -318,31 +372,12 @@ export default function Customers() {
     }
   };
 
-  // Filtered customers
-  const filteredCustomers = useMemo(() => {
-    return customers.filter((c) => {
-      const matchSearch =
-        search === "" ||
-        (c.customer_name && c.customer_name.toLowerCase().includes(search.toLowerCase())) ||
-        (c.customer_phone && c.customer_phone.includes(search)) ||
-        (c.customer_email && c.customer_email.toLowerCase().includes(search.toLowerCase())) ||
-        c.phone_number.includes(search);
-
-      const matchStage =
-        stageFilter === "all" ||
-        c.current_stage === stageFilter ||
-        (stageFilter === "pending_verification" && (c.current_stage === "pending_verification" || c.current_stage === "receipt_pending")) ||
-        (stageFilter === "enrolled" && (c.current_stage === "enrolled" || c.current_stage === "completed")) ||
-        (stageFilter === "pay_later" && c.current_stage === "pay_later");
-
-      return matchSearch && matchStage;
-    });
-  }, [customers, search, stageFilter]);
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header - Styled to match other pages */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Customers</h1>
@@ -351,7 +386,13 @@ export default function Customers() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={fetchCustomers} disabled={loading} className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchCustomers}
+              disabled={loading}
+              className="gap-1.5"
+            >
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
               Refresh
             </Button>
@@ -368,12 +409,12 @@ export default function Customers() {
                   type="search"
                   placeholder="Search by name, phone, or email..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-8 text-sm"
                 />
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Select value={stageFilter} onValueChange={setStageFilter}>
+                <Select value={stageFilter} onValueChange={handleStageFilterChange}>
                   <SelectTrigger className="w-full sm:w-[220px] text-xs">
                     <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                     <SelectValue placeholder="Filter by Message Set" />
@@ -408,7 +449,7 @@ export default function Customers() {
                         Loading customers...
                       </TableCell>
                     </TableRow>
-                  ) : filteredCustomers.length === 0 ? (
+                  ) : customers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                         <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -416,10 +457,14 @@ export default function Customers() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredCustomers.map((customer) => {
+                    customers.map((customer) => {
                       const stageInfo = formatStageBadge(customer.current_stage);
-                      const isPending = customer.current_stage === "pending_verification" || customer.current_stage === "receipt_pending";
-                      const isEnrolled = customer.current_stage === "enrolled" || customer.current_stage === "completed";
+                      const isPending =
+                        customer.current_stage === "pending_verification" ||
+                        customer.current_stage === "receipt_pending";
+                      const isEnrolled =
+                        customer.current_stage === "enrolled" ||
+                        customer.current_stage === "completed";
 
                       return (
                         <TableRow key={customer.id} className="hover:bg-muted/40 transition-colors">
@@ -433,9 +478,12 @@ export default function Customers() {
                                 <p className="text-sm font-semibold text-foreground leading-tight">
                                   {customer.customer_name || "Unidentified Customer"}
                                 </p>
-                                {customer.push_name && customer.push_name !== customer.customer_name && (
-                                  <p className="text-[11px] text-muted-foreground">WA: {customer.push_name}</p>
-                                )}
+                                {customer.push_name &&
+                                  customer.push_name !== customer.customer_name && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                      WA: {customer.push_name}
+                                    </p>
+                                  )}
                               </div>
                             </div>
                           </TableCell>
@@ -444,7 +492,13 @@ export default function Customers() {
                           <TableCell>
                             <button
                               type="button"
-                              onClick={() => copyToClipboard(customer.phone_number, `phone_${customer.id}`, "Phone Number")}
+                              onClick={() =>
+                                copyToClipboard(
+                                  customer.phone_number,
+                                  `phone_${customer.id}`,
+                                  "Phone Number"
+                                )
+                              }
                               className="group flex items-center gap-1.5 text-xs font-mono text-foreground hover:text-primary transition-colors py-1 px-1.5 rounded hover:bg-muted/60"
                               title="Click to copy phone number"
                             >
@@ -463,7 +517,13 @@ export default function Customers() {
                             {customer.customer_email ? (
                               <button
                                 type="button"
-                                onClick={() => copyToClipboard(customer.customer_email!, `email_${customer.id}`, "Email Address")}
+                                onClick={() =>
+                                  copyToClipboard(
+                                    customer.customer_email!,
+                                    `email_${customer.id}`,
+                                    "Email Address"
+                                  )
+                                }
                                 className="group flex items-center gap-1.5 text-xs text-foreground hover:text-primary transition-colors py-1 px-1.5 rounded hover:bg-muted/60"
                                 title="Click to copy email address"
                               >
@@ -476,7 +536,9 @@ export default function Customers() {
                                 )}
                               </button>
                             ) : (
-                              <span className="text-xs text-muted-foreground italic pl-1.5">Not provided</span>
+                              <span className="text-xs text-muted-foreground italic pl-1.5">
+                                Not provided
+                              </span>
                             )}
                           </TableCell>
 
@@ -488,7 +550,12 @@ export default function Customers() {
                                 stageInfo.badgeClass
                               )}
                             >
-                              <span className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", stageInfo.dotColor)} />
+                              <span
+                                className={cn(
+                                  "h-1.5 w-1.5 rounded-full flex-shrink-0",
+                                  stageInfo.dotColor
+                                )}
+                              />
                               {stageInfo.label}
                             </span>
                           </TableCell>
@@ -547,7 +614,11 @@ export default function Customers() {
                                 variant="outline"
                                 size="sm"
                                 className="h-8 text-xs gap-1"
-                                onClick={() => navigate("/dashboard/conversations")}
+                                onClick={() =>
+                                  navigate(
+                                    `/dashboard/conversations?phone=${customer.phone_number}`
+                                  )
+                                }
                               >
                                 <MessageSquare className="h-3.5 w-3.5" />
                                 Chat
@@ -561,6 +632,36 @@ export default function Customers() {
                 </TableBody>
               </Table>
             </div>
+
+            {totalCount > pageSize && (
+              <div className="flex items-center justify-between p-4 border-t text-sm text-muted-foreground">
+                <div>
+                  Showing {(page - 1) * pageSize + 1} to{" "}
+                  {Math.min(page * pageSize, totalCount)} of {totalCount} customers
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1 || loading}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -582,13 +683,21 @@ export default function Customers() {
                 <div className="p-3 rounded-lg border bg-muted/30 space-y-2.5">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground text-xs">Customer Name:</span>
-                    <span className="font-semibold">{selectedCustomer.customer_name || "Not provided"}</span>
+                    <span className="font-semibold">
+                      {selectedCustomer.customer_name || "Not provided"}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground text-xs">WhatsApp Number:</span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard(selectedCustomer.phone_number, "dlg_phone", "Phone Number")}
+                      onClick={() =>
+                        copyToClipboard(
+                          selectedCustomer.phone_number,
+                          "dlg_phone",
+                          "Phone Number"
+                        )
+                      }
                       className="font-mono text-xs font-semibold hover:text-primary flex items-center gap-1"
                     >
                       {selectedCustomer.phone_number}
@@ -600,7 +709,13 @@ export default function Customers() {
                     {selectedCustomer.customer_email ? (
                       <button
                         type="button"
-                        onClick={() => copyToClipboard(selectedCustomer.customer_email!, "dlg_email", "Email Address")}
+                        onClick={() =>
+                          copyToClipboard(
+                            selectedCustomer.customer_email!,
+                            "dlg_email",
+                            "Email Address"
+                          )
+                        }
                         className="font-semibold hover:text-primary flex items-center gap-1 text-xs"
                       >
                         {selectedCustomer.customer_email}
@@ -612,15 +727,27 @@ export default function Customers() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground text-xs">Current Message Set:</span>
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border", formatStageBadge(selectedCustomer.current_stage).badgeClass)}>
-                      <span className={cn("h-1.5 w-1.5 rounded-full", formatStageBadge(selectedCustomer.current_stage).dotColor)} />
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border",
+                        formatStageBadge(selectedCustomer.current_stage).badgeClass
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          formatStageBadge(selectedCustomer.current_stage).dotColor
+                        )}
+                      />
                       {formatStageBadge(selectedCustomer.current_stage).label}
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <span className="text-xs font-semibold text-muted-foreground">Received Message Sets</span>
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Received Message Sets
+                  </span>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedCustomer.received_sets.map((set) => (
                       <Badge key={set} variant="secondary" className="text-xs">
@@ -632,7 +759,9 @@ export default function Customers() {
 
                 {selectedCustomer.receipt_url && (
                   <div className="space-y-1.5 pt-2 border-t">
-                    <span className="text-xs font-semibold text-muted-foreground">Uploaded Payment Receipt</span>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Uploaded Payment Receipt
+                    </span>
                     <div className="flex items-center gap-2">
                       <a
                         href={selectedCustomer.receipt_url}
@@ -648,7 +777,8 @@ export default function Customers() {
                 )}
 
                 <div className="pt-2 border-t flex items-center justify-between gap-2">
-                  {(selectedCustomer.current_stage === "pending_verification" || selectedCustomer.current_stage === "receipt_pending") ? (
+                  {selectedCustomer.current_stage === "pending_verification" ||
+                  selectedCustomer.current_stage === "receipt_pending" ? (
                     <Button
                       variant="default"
                       size="sm"
@@ -659,7 +789,8 @@ export default function Customers() {
                       <UserCheck className="h-4 w-4" />
                       Confirm & Enroll Student
                     </Button>
-                  ) : (selectedCustomer.current_stage === "enrolled" || selectedCustomer.current_stage === "completed") ? (
+                  ) : selectedCustomer.current_stage === "enrolled" ||
+                    selectedCustomer.current_stage === "completed" ? (
                     <Button
                       variant="outline"
                       size="sm"
@@ -679,7 +810,9 @@ export default function Customers() {
                     size="sm"
                     onClick={() => {
                       setDetailOpen(false);
-                      navigate("/dashboard/conversations");
+                      navigate(
+                        `/dashboard/conversations?phone=${selectedCustomer.phone_number}`
+                      );
                     }}
                     className="gap-1 text-xs"
                   >
