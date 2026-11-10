@@ -1,5 +1,5 @@
 import { getFunctionUrl } from "@/lib/functions";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Sparkles, Lock, Users, Search } from "lucide-react";
+import { MessageSquare, Sparkles, Lock, Users, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const LEAD_STATUSES = [
@@ -66,6 +66,11 @@ export default function Leads() {
   const [filterStatus, setFilterStatus] = useState<string>(ALL);
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
 
+  // Server-side pagination
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 25;
+
   const isOwner = !isStaff;
 
   const load = useCallback(async () => {
@@ -75,16 +80,8 @@ export default function Leads() {
     }
     setLoading(true);
     try {
-      const [orderRes, leadRes, staffRes, settingRes] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("customer_phone, whatsapp_phone")
-          .eq("user_id", effectiveUserId),
-        supabase
-          .from("leads" as any)
-          .select("id, phone_number, customer_name, assigned_to, status, inbound_count, updated_at")
-          .eq("user_id", effectiveUserId)
-          .order("updated_at", { ascending: false }),
+      // 1. Fetch staff & settings
+      const [staffRes, settingRes] = await Promise.all([
         supabase
           .from("staff_accounts")
           .select("staff_user_id, staff_name, staff_email, whatsapp_number")
@@ -102,13 +99,67 @@ export default function Leads() {
       setStaff(staffList);
       setAutoAssign(Boolean((settingRes.data?.value as any)?.enabled));
 
-      const orderPhones = new Set<string>();
-      (orderRes.data || []).forEach((o: any) => {
-        if (o.customer_phone) orderPhones.add(String(o.customer_phone));
-        if (o.whatsapp_phone) orderPhones.add(String(o.whatsapp_phone));
-      });
+      // 2. Query paginated leads directly from database
+      let query = supabase
+        .from("leads" as any)
+        .select("id, phone_number, customer_name, assigned_to, status, inbound_count, updated_at", {
+          count: "exact",
+        })
+        .eq("user_id", effectiveUserId);
 
-      const built: LeadRow[] = ((leadRes.data as any[]) || []).map((l) => ({
+      if (isStaff && user) {
+        query = query.eq("assigned_to", user.id);
+      } else if (isOwner) {
+        if (filterStaff !== ALL) {
+          if (filterStaff === UNASSIGNED) {
+            query = query.is("assigned_to", null);
+          } else {
+            query = query.eq("assigned_to", filterStaff);
+          }
+        }
+        if (filterStatus !== ALL) {
+          query = query.eq("status", filterStatus);
+        }
+        if (qualifiedOnly) {
+          query = query.gte("inbound_count", 6);
+        }
+      }
+
+      const cleanSearch = search.trim();
+      if (cleanSearch) {
+        query = query.or(
+          `customer_name.ilike.%${cleanSearch}%,phone_number.ilike.%${cleanSearch}%`
+        );
+      }
+
+      query = query
+        .order("updated_at", { ascending: false })
+        .range((page - 1) * pageSize, page * pageSize - 1);
+
+      const { data: leadData, count, error: leadError } = await query;
+      if (leadError) throw leadError;
+
+      const loadedLeads = (leadData as any[]) || [];
+      setTotalCount(count ?? 0);
+
+      // 3. For the 25 leads on the active page, check if they have orders
+      const pagePhones = loadedLeads.map((l) => l.phone_number);
+      const orderPhones = new Set<string>();
+
+      if (pagePhones.length > 0) {
+        const { data: orderData } = await supabase
+          .from("orders")
+          .select("customer_phone, whatsapp_phone")
+          .eq("user_id", effectiveUserId)
+          .in("customer_phone", pagePhones);
+
+        (orderData || []).forEach((o: any) => {
+          if (o.customer_phone) orderPhones.add(String(o.customer_phone));
+          if (o.whatsapp_phone) orderPhones.add(String(o.whatsapp_phone));
+        });
+      }
+
+      const built: LeadRow[] = loadedLeads.map((l) => ({
         id: l.id,
         phone_number: l.phone_number,
         customer_name: l.customer_name || "Unknown",
@@ -125,13 +176,51 @@ export default function Leads() {
     } finally {
       setLoading(false);
     }
-  }, [effectiveUserId, isGrowth, toast]);
+  }, [
+    effectiveUserId,
+    isGrowth,
+    isStaff,
+    isOwner,
+    user,
+    filterStaff,
+    filterStatus,
+    qualifiedOnly,
+    search,
+    page,
+    toast,
+  ]);
 
+  // Debounced load when filters/search/page changes
   useEffect(() => {
-    if (!planLoading) load();
+    if (!planLoading) {
+      const timer = setTimeout(() => {
+        load();
+      }, 250);
+      return () => clearTimeout(timer);
+    }
   }, [planLoading, load]);
 
-  // Auto-assign unassigned leads in round-robin order (owner side)
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
+
+  const handleStaffFilterChange = (val: string) => {
+    setFilterStaff(val);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (val: string) => {
+    setFilterStatus(val);
+    setPage(1);
+  };
+
+  const handleQualifiedToggle = () => {
+    setQualifiedOnly((prev) => !prev);
+    setPage(1);
+  };
+
+  // Auto-assign unassigned leads on the active page
   useEffect(() => {
     if (!isOwner || !autoAssign || loading || staff.length === 0) return;
     const unassigned = rows.filter((r) => !r.assigned_to && r.id);
@@ -251,36 +340,8 @@ export default function Leads() {
     }
   };
 
-  const staffName = (id: string | null) => {
-    if (!id) return "Unassigned";
-    const s = staff.find((x) => x.staff_user_id === id);
-    return s?.staff_name || s?.staff_email || "Staff";
-  };
-
   const isQualified = (r: LeadRow) => r.inbound_count >= 6 || r.has_order;
-
-  const visibleRows = useMemo(() => {
-    let list = rows;
-    if (isStaff && user) list = list.filter((r) => r.assigned_to === user.id);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (r) =>
-          r.phone_number.toLowerCase().includes(q) ||
-          r.customer_name.toLowerCase().includes(q)
-      );
-    }
-    if (isOwner) {
-      if (filterStaff !== ALL) {
-        list = list.filter((r) =>
-          filterStaff === UNASSIGNED ? !r.assigned_to : r.assigned_to === filterStaff
-        );
-      }
-      if (filterStatus !== ALL) list = list.filter((r) => r.status === filterStatus);
-      if (qualifiedOnly) list = list.filter(isQualified);
-    }
-    return list;
-  }, [rows, isStaff, user, search, isOwner, filterStaff, filterStatus, qualifiedOnly]);
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   if (planLoading) {
     return (
@@ -348,13 +409,13 @@ export default function Leads() {
             <Input
               placeholder="Search name or number"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
             />
           </div>
           {isOwner && (
             <>
-              <Select value={filterStaff} onValueChange={setFilterStaff}>
+              <Select value={filterStaff} onValueChange={handleStaffFilterChange}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter staff" />
                 </SelectTrigger>
@@ -368,7 +429,7 @@ export default function Leads() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <Select value={filterStatus} onValueChange={handleStatusFilterChange}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Filter status" />
                 </SelectTrigger>
@@ -384,7 +445,7 @@ export default function Leads() {
               <Button
                 variant={qualifiedOnly ? "default" : "outline"}
                 size="sm"
-                onClick={() => setQualifiedOnly((v) => !v)}
+                onClick={handleQualifiedToggle}
                 className="gap-1.5"
               >
                 <Sparkles className="h-4 w-4" /> Qualified only
@@ -397,109 +458,146 @@ export default function Leads() {
         <Card>
           <CardContent className="p-0">
             {loading ? (
-              <p className="p-6 text-sm text-muted-foreground">Loading leads...</p>
-            ) : visibleRows.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                Loading leads...
+              </div>
+            ) : rows.length === 0 ? (
               <div className="p-12 text-center text-muted-foreground">
                 <Users className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                <p>No leads found</p>
+                <p>No leads found matching your criteria</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b bg-muted/40 text-muted-foreground">
-                    <tr>
-                      <th className="p-3 text-left font-medium">Customer</th>
-                      <th className="p-3 text-left font-medium">Phone</th>
-                      <th className="p-3 text-left font-medium">Messages</th>
-                      <th className="p-3 text-left font-medium">Status</th>
-                      {isOwner && <th className="p-3 text-left font-medium">Assigned to</th>}
-                      <th className="p-3 text-right font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {visibleRows.map((r) => {
-                      const qualified = isQualified(r);
-                      return (
-                        <tr key={r.phone_number} className="hover:bg-muted/20">
-                          <td className="p-3 font-medium">
-                            <div className="flex items-center gap-2">
-                              <span>{r.customer_name}</span>
-                              {qualified && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                >
-                                  <Sparkles className="h-3 w-3" /> Qualified
-                                </Badge>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b bg-muted/40 text-muted-foreground">
+                      <tr>
+                        <th className="p-3 text-left font-medium">Customer</th>
+                        <th className="p-3 text-left font-medium">Phone</th>
+                        <th className="p-3 text-left font-medium">Messages</th>
+                        <th className="p-3 text-left font-medium">Status</th>
+                        {isOwner && <th className="p-3 text-left font-medium">Assigned to</th>}
+                        <th className="p-3 text-right font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {rows.map((r) => {
+                        const qualified = isQualified(r);
+                        return (
+                          <tr key={r.phone_number} className="hover:bg-muted/20">
+                            <td className="p-3 font-medium">
+                              <div className="flex items-center gap-2">
+                                <span>{r.customer_name}</span>
+                                {qualified && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                  >
+                                    <Sparkles className="h-3 w-3" /> Qualified
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-muted-foreground">{r.phone_number}</td>
+                            <td className="p-3 text-muted-foreground">
+                              {r.inbound_count} incoming
+                              {r.has_order && (
+                                <span className="ml-1 text-xs text-primary">• ordered</span>
                               )}
-                            </div>
-                          </td>
-                          <td className="p-3 text-muted-foreground">{r.phone_number}</td>
-                          <td className="p-3 text-muted-foreground">
-                            {r.inbound_count} incoming
-                            {r.has_order && <span className="ml-1 text-xs text-primary">• ordered</span>}
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={r.status}
-                              onValueChange={(val) => updateLead(r, { status: val })}
-                              disabled={!r.id}
-                            >
-                              <SelectTrigger className="w-[130px] h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {LEAD_STATUSES.map((st) => (
-                                  <SelectItem key={st.value} value={st.value}>
-                                    {st.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          {isOwner && (
+                            </td>
                             <td className="p-3">
                               <Select
-                                value={r.assigned_to || UNASSIGNED}
-                                onValueChange={(val) =>
-                                  updateLead(r, {
-                                    assigned_to: val === UNASSIGNED ? null : val,
-                                  })
-                                }
-                                disabled={!r.id || staff.length === 0}
+                                value={r.status}
+                                onValueChange={(val) => updateLead(r, { status: val })}
+                                disabled={!r.id}
                               >
-                                <SelectTrigger className="w-[160px] h-8 text-xs">
-                                  <SelectValue placeholder="Assign" />
+                                <SelectTrigger className="w-[130px] h-8 text-xs">
+                                  <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                                  {staff.map((s) => (
-                                    <SelectItem key={s.staff_user_id} value={s.staff_user_id}>
-                                      {s.staff_name || s.staff_email}
+                                  {LEAD_STATUSES.map((st) => (
+                                    <SelectItem key={st.value} value={st.value}>
+                                      {st.label}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </td>
-                          )}
-                          <td className="p-3 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 gap-1.5"
-                              onClick={() =>
-                                navigate(`/dashboard/conversations?phone=${r.phone_number}`)
-                              }
-                            >
-                              <MessageSquare className="h-3.5 w-3.5" /> Chat
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            {isOwner && (
+                              <td className="p-3">
+                                <Select
+                                  value={r.assigned_to || UNASSIGNED}
+                                  onValueChange={(val) =>
+                                    updateLead(r, {
+                                      assigned_to: val === UNASSIGNED ? null : val,
+                                    })
+                                  }
+                                  disabled={!r.id || staff.length === 0}
+                                >
+                                  <SelectTrigger className="w-[160px] h-8 text-xs">
+                                    <SelectValue placeholder="Assign" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                                    {staff.map((s) => (
+                                      <SelectItem key={s.staff_user_id} value={s.staff_user_id}>
+                                        {s.staff_name || s.staff_email}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </td>
+                            )}
+                            <td className="p-3 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1.5"
+                                onClick={() =>
+                                  navigate(`/dashboard/conversations?phone=${r.phone_number}`)
+                                }
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" /> Chat
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {totalCount > pageSize && (
+                  <div className="flex items-center justify-between p-4 border-t text-sm text-muted-foreground">
+                    <div>
+                      Showing {(page - 1) * pageSize + 1} to{" "}
+                      {Math.min(page * pageSize, totalCount)} of {totalCount} leads
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page <= 1 || loading}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-xs">
+                        Page {page} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page >= totalPages || loading}
+                        onClick={() => setPage((p) => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

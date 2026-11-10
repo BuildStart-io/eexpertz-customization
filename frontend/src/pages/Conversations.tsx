@@ -22,6 +22,7 @@ import {
   HandMetal,
   Trash2,
   Crosshair,
+  ChevronDown,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -577,14 +578,15 @@ export default function Conversations() {
         </div>
 
         <Card className="flex-1 flex overflow-hidden">
-          {/* Thread List */}
+          {/* Thread List Sidebar */}
           <div
             className={cn(
-              "w-full md:w-80 border-r flex flex-col",
+              "w-full md:w-80 border-r flex flex-col h-full",
               selectedPhone ? "hidden md:flex" : "flex"
             )}
           >
-            <div className="p-3 border-b">
+            {/* Search Box Header */}
+            <div className="p-3 border-b shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -595,7 +597,9 @@ export default function Conversations() {
                 />
               </div>
             </div>
-            <ScrollArea className="flex-1">
+
+            {/* Scrollable Thread List */}
+            <ScrollArea className="flex-1 min-h-0">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -728,28 +732,32 @@ export default function Conversations() {
                   </div>
                 </TooltipProvider>
               )}
-
-              {hasMoreThreads && (
-                <div className="p-3 text-center border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={loadingMoreThreads}
-                    onClick={() => fetchThreads(searchQuery, threads.length)}
-                    className="w-full text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {loadingMoreThreads ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                        Loading older threads...
-                      </>
-                    ) : (
-                      "Load more conversations"
-                    )}
-                  </Button>
-                </div>
-              )}
             </ScrollArea>
+
+            {/* Distinct, always-visible separate button footer */}
+            {hasMoreThreads && (
+              <div className="p-3 border-t bg-muted/30 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={loadingMoreThreads}
+                  onClick={() => fetchThreads(searchQuery, threads.length)}
+                  className="w-full h-9 font-semibold text-xs bg-background hover:bg-muted border-primary/40 text-primary shadow-xs flex items-center justify-center gap-1.5 transition-all"
+                >
+                  {loadingMoreThreads ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading conversations...
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4" />
+                      Load More Conversations ({threads.length} loaded)
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Chat Area */}
