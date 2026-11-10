@@ -309,7 +309,7 @@ CRITICAL SECURITY RULE:
     // Prompt, model and max_tokens are identical on both paths, so response
     // quality is unchanged.
     // ------------------------------------------------------------------
-    const MODEL = "google/gemini-3-flash-preview";
+    const MODEL = "google/gemini-2.5-flash-lite";
     const MAX_TOKENS = 500;
 
     let aiResponse: Response;
